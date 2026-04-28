@@ -28,7 +28,7 @@ import {
   type UserResponseDto,
 } from '@immich/sdk';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
-import { mdiLink, mdiPlus, mdiPlusBoxOutline, mdiShareVariantOutline, mdiUpload } from '@mdi/js';
+import { mdiLink, mdiPlus, mdiPlusBoxOutline, mdiShareVariantOutline, mdiUpload, mdiArrowLeft } from '@mdi/js';
 import { type MessageFormatter } from 'svelte-i18n';
 
 export const getAlbumsActions = ($t: MessageFormatter) => {
@@ -65,7 +65,15 @@ export const getAlbumActions = ($t: MessageFormatter, album: AlbumResponseDto) =
     onAction: () => modalManager.show(SharedLinkCreateModal, { albumId: album.id }),
   };
 
-  return { Share, AddUsers, CreateSharedLink };
+   const Close: ActionItem = {
+    title: $t('go_back'),
+    icon: mdiArrowLeft,
+    onAction: () => goto(album.parentId ? Route.viewAlbum({ id: album.parentId }) : Route.albums()),
+    shortcuts: { key: 'Escape' },
+  };
+
+
+  return { Share, AddUsers, CreateSharedLink, Close };
 };
 
 export const getAlbumAssetsActions = ($t: MessageFormatter, album: AlbumResponseDto, assets: TimelineAsset[]) => {

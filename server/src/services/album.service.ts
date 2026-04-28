@@ -98,6 +98,7 @@ export class AlbumService extends BaseService {
     await this.albumRepository.updateThumbnails();
     const album = await this.findOrFail(id, { withAssets: false });
     const [albumMetadataForIds] = await this.albumRepository.getMetadataForIds([album.id]);
+    const [childAlbumCountResult] = await this.albumRepository.getChildAlbumCounts([album.id]);
 
     const hasSharedUsers = album.albumUsers && album.albumUsers.length > 0;
     const hasSharedLink = album.sharedLinks && album.sharedLinks.length > 0;
@@ -110,6 +111,7 @@ export class AlbumService extends BaseService {
       assetCount: albumMetadataForIds?.assetCount ?? 0,
       lastModifiedAssetTimestamp: asDateString(albumMetadataForIds?.lastModifiedAssetTimestamp ?? undefined),
       contributorCounts: isShared ? await this.albumRepository.getContributorCounts(album.id) : undefined,
+      childAlbumCount: childAlbumCountResult?.childCount ?? 0,
     };
   }
 
@@ -137,6 +139,15 @@ export class AlbumService extends BaseService {
       }
     }
 
+    // Validate parentId if provided
+    if (dto.parentId) {
+      const parentAlbum = await this.albumRepository.getById(dto.parentId, { withAssets: false });
+      if (!parentAlbum) {
+        throw new BadRequestException('Parent album not found');
+      }
+      await this.requireAccess({ auth, permission: Permission.AlbumRead, ids: [dto.parentId] });
+    }
+
     const allowedAssetIdsSet = await this.checkAccess({
       auth,
       permission: Permission.AssetShare,
@@ -153,6 +164,7 @@ export class AlbumService extends BaseService {
         description: dto.description,
         albumThumbnailAssetId: assetIds[0] || null,
         order: getPreferences(userMetadata).albums.defaultAssetOrder,
+        parentId: dto.parentId || null,
       },
       assetIds,
       albumUsers,
@@ -191,6 +203,21 @@ export class AlbumService extends BaseService {
   async delete(auth: AuthDto, id: string): Promise<void> {
     await this.requireAccess({ auth, permission: Permission.AlbumDelete, ids: [id] });
     await this.albumRepository.delete(id);
+  }
+
+  async getChildAlbums(auth: AuthDto, id: string): Promise<AlbumResponseDto[]> {
+    await this.requireAccess({ auth, permission: Permission.AlbumRead, ids: [id] });
+    const childAlbums = await this.albumRepository.getChildAlbums(id);
+
+    const results = await this.albumRepository.getMetadataForIds(childAlbums.map((album) => album.id));
+    const albumMetadata: Record<string, AlbumAssetCount> = {};
+    for (const metadata of results) {
+      albumMetadata[metadata.albumId] = metadata;
+    }
+
+    return childAlbums.map((album) => ({
+      ...mapAlbum(album),
+    }));
   }
 
   async addAssets(auth: AuthDto, id: string, dto: BulkIdsDto): Promise<BulkIdResponseDto[]> {

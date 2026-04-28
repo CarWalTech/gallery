@@ -2261,6 +2261,70 @@
         "x-immich-state": "Stable"
       }
     },
+    "/albums/{id}/children": {
+      "get": {
+        "description": "Retrieve the direct child (sub) albums of a specific album.",
+        "operationId": "getChildAlbums",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlbumResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Get child albums",
+        "tags": [
+          "Albums"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          }
+        ],
+        "x-immich-permission": "album.read",
+        "x-immich-state": "Stable"
+      }
+    },
     "/albums/{id}/map-markers": {
       "get": {
         "description": "Retrieve map marker information for a specific album by its ID.",
@@ -18615,6 +18679,12 @@
             "minimum": 0,
             "type": "integer"
           },
+          "childAlbumCount": {
+            "description": "Number of child (sub) albums",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "contributorCounts": {
             "items": {
               "$ref": "#/components/schemas/ContributorCountResponseDto"
@@ -18662,6 +18732,11 @@
             "description": "Owner user ID",
             "type": "string"
           },
+          "parentId": {
+            "description": "Parent album ID",
+            "nullable": true,
+            "type": "string"
+          },
           "shared": {
             "description": "Is shared album",
             "type": "boolean"
@@ -18682,6 +18757,7 @@
           "albumThumbnailAssetId",
           "albumUsers",
           "assetCount",
+          "childAlbumCount",
           "createdAt",
           "description",
           "hasSharedLink",
@@ -18689,6 +18765,7 @@
           "isActivityEnabled",
           "owner",
           "ownerId",
+          "parentId",
           "shared",
           "updatedAt"
         ],
@@ -20492,10 +20569,15 @@
           "description": {
             "description": "Album description",
             "type": "string"
+          },
+          "parentId": {
+            "description": "Parent album ID for nesting",
+            "type": "string"
           }
         },
         "required": [
-          "albumName"
+          "albumName",
+          "parentId"
         ],
         "type": "object"
       },

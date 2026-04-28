@@ -1,93 +1,167 @@
-import { sortAlbums } from '$lib/utils/album-utils';
-import { normalizeSearchString } from '$lib/utils/string-utils';
 import type { AlbumResponseDto } from '@immich/sdk';
-import { t } from 'svelte-i18n';
-import { get } from 'svelte/store';
 
 export const SCROLL_PROPERTIES: ScrollIntoViewOptions = { block: 'center', behavior: 'smooth' };
 
-export enum AlbumModalRowType {
-  SECTION = 'section',
-  MESSAGE = 'message',
-  NEW_ALBUM = 'newAlbum',
-  ALBUM_ITEM = 'albumItem',
-}
+// Avoid TS enum emit issues
+export const AlbumModalRowType = {
+  NEW_ALBUM: 'NEW_ALBUM',
+  SECTION: 'SECTION',
+  MESSAGE: 'MESSAGE',
+  ALBUM_ITEM: 'ALBUM_ITEM',
+} as const;
 
-export type AlbumModalRow = {
+export type AlbumModalRowType = (typeof AlbumModalRowType)[keyof typeof AlbumModalRowType];
+
+export interface AlbumModalRow {
   type: AlbumModalRowType;
-  selected?: boolean;
-  multiSelected?: boolean;
   text?: string;
   album?: AlbumResponseDto;
-};
+  selected?: boolean;
+  multiSelected?: boolean;
+
+  // Tree support
+  depth?: number;
+  expanded?: boolean;
+  hasChildren?: boolean;
+}
 
 export const isSelectableRowType = (type: AlbumModalRowType) =>
-  type === AlbumModalRowType.NEW_ALBUM || type === AlbumModalRowType.ALBUM_ITEM;
-
-const $t = get(t);
+  type === AlbumModalRowType.ALBUM_ITEM || type === AlbumModalRowType.NEW_ALBUM;
 
 export class AlbumModalRowConverter {
-  private readonly sortBy: string;
-  private readonly orderBy: string;
+  private sortBy: string;
+  private sortOrder: string;
 
-  constructor(sortBy: string, orderBy: string) {
+  // Passed in from Svelte so state persists
+  expandedState: Record<string, boolean>;
+
+  constructor(sortBy: string, sortOrder: string, expandedState: Record<string, boolean>) {
     this.sortBy = sortBy;
-    this.orderBy = orderBy;
+    this.sortOrder = sortOrder;
+    this.expandedState = expandedState;
+  }
+
+  toggle(id: string) {
+    this.expandedState[id] = !this.expandedState[id];
+  }
+
+  private buildTree(albums: AlbumResponseDto[]) {
+    const map = new Map<string, AlbumResponseDto & { children: any[] }>();
+
+    for (const a of albums) {
+      map.set(a.id, { ...a, children: [] });
+    }
+
+    const roots: (AlbumResponseDto & { children: any[] })[] = [];
+
+    for (const node of map.values()) {
+      if (node.parentId && map.has(node.parentId)) {
+        map.get(node.parentId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    return roots;
+  }
+
+  private flattenTree(nodes: (AlbumResponseDto & { children: any[] })[], depth = 0): AlbumModalRow[] {
+    const rows: AlbumModalRow[] = [];
+
+    for (const node of nodes) {
+      const expanded = this.expandedState[node.id] ?? false;
+
+      rows.push({
+        type: AlbumModalRowType.ALBUM_ITEM,
+        album: node,
+        depth,
+        expanded,
+        hasChildren: node.children.length > 0,
+      });
+
+      if (expanded) {
+        rows.push(...this.flattenTree(node.children, depth + 1));
+      }
+    }
+
+    return rows;
   }
 
   toModalRows(
     search: string,
     recentAlbums: AlbumResponseDto[],
-    albums: AlbumResponseDto[],
+    allAlbums: AlbumResponseDto[],
     selectedRowIndex: number,
-    multiSelectedAlbumIds: string[],
+    multiSelectedIds: string[],
   ): AlbumModalRow[] {
-    // only show recent albums if no search was entered
-    const recentAlbumsToShow = search.length === 0 ? recentAlbums : [];
-    const rows: AlbumModalRow[] = [{ type: AlbumModalRowType.NEW_ALBUM, selected: selectedRowIndex === 0 }];
+    const rows: AlbumModalRow[] = [];
 
-    const filteredAlbums = sortAlbums(
-      search.length > 0 && albums.length > 0
-        ? albums.filter((album) => {
-            return normalizeSearchString(album.albumName).includes(normalizeSearchString(search));
-          })
-        : albums,
-      { sortBy: this.sortBy, orderBy: this.orderBy },
-    );
+    // NEW ALBUM ROW
+    if (search.trim().length > 0) {
+      rows.push({
+        type: AlbumModalRowType.NEW_ALBUM,
+        text: search,
+      });
+    }
 
-    if (filteredAlbums.length > 0) {
-      if (recentAlbumsToShow.length > 0) {
-        rows.push({ type: AlbumModalRowType.SECTION, text: $t('recent').toUpperCase() });
-        const selectedOffsetDueToNewAlbumRow = 1;
-        for (const [i, album] of recentAlbums.entries()) {
+    // RECENT SECTION
+    if (!search) {
+      rows.push({
+        type: AlbumModalRowType.SECTION,
+        text: 'Recent',
+      });
+
+      if (recentAlbums.length === 0) {
+        rows.push({
+          type: AlbumModalRowType.MESSAGE,
+          text: 'No recent albums',
+        });
+      } else {
+        for (const album of recentAlbums) {
           rows.push({
             type: AlbumModalRowType.ALBUM_ITEM,
-            selected: selectedRowIndex === i + selectedOffsetDueToNewAlbumRow,
-            multiSelected: multiSelectedAlbumIds.includes(album.id),
             album,
+            depth: 0,
+            expanded: false,
+            hasChildren: false,
           });
         }
       }
-
-      rows.push({
-        type: AlbumModalRowType.SECTION,
-        text: (search.length === 0 ? $t('all_albums') : $t('albums')).toUpperCase(),
-      });
-
-      const selectedOffsetDueToNewAndRecents = 1 + recentAlbumsToShow.length;
-      for (const [i, album] of filteredAlbums.entries()) {
-        rows.push({
-          type: AlbumModalRowType.ALBUM_ITEM,
-          selected: selectedRowIndex === i + selectedOffsetDueToNewAndRecents,
-          multiSelected: multiSelectedAlbumIds.includes(album.id),
-          album,
-        });
-      }
-    } else if (albums.length > 0) {
-      rows.push({ type: AlbumModalRowType.MESSAGE, text: $t('no_albums_with_name_yet') });
-    } else {
-      rows.push({ type: AlbumModalRowType.MESSAGE, text: $t('no_albums_yet') });
     }
+
+    // FULL ALBUM TREE SECTION
+    rows.push({
+      type: AlbumModalRowType.SECTION,
+      text: 'Albums',
+    });
+
+    const tree = this.buildTree(allAlbums);
+    let treeRows = this.flattenTree(tree);
+
+    // SEARCH FILTERING
+    if (search.trim().length > 0) {
+      const q = search.toLowerCase();
+      treeRows = treeRows.filter((r) => r.album && r.album.albumName.toLowerCase().includes(q));
+
+      if (treeRows.length === 0) {
+        rows.push({
+          type: AlbumModalRowType.MESSAGE,
+          text: 'No albums found',
+        });
+        return rows;
+      }
+    }
+
+    // APPLY SELECTION + MULTISELECT
+    const selectableRows = treeRows.filter((r) => isSelectableRowType(r.type));
+
+    selectableRows.forEach((row, i) => {
+      row.selected = i === selectedRowIndex;
+      row.multiSelected = row.album ? multiSelectedIds.includes(row.album.id) : false;
+    });
+
+    rows.push(...treeRows);
+
     return rows;
   }
 }

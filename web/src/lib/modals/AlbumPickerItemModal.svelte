@@ -5,15 +5,16 @@
   import { mdiCheck, mdiChevronDown, mdiChevronRight } from '@mdi/js';
 
   export let album: AlbumResponseDto;
-  export let selected = false;
-  export let multiSelected = false;
+  export let selected: boolean = false;
+  export let multiSelected: boolean = false;
 
-  export let depth = 0;
-  export let hasChildren = false;
-  export let expanded = false;
+  // NEW props for tree support
+  export let depth: number = 0;
+  export let hasChildren: boolean = false;
+  export let expanded: boolean = false;
   export let onToggle: () => void = () => {};
 
-  export let searchQuery = '';
+  export let searchQuery: string = '';
   export let onAlbumClick: () => void = () => {};
   export let onMultiSelect: () => void = () => {};
 
@@ -25,19 +26,12 @@
   class:selected
   style="padding-left: {indent};"
   on:click={(e) => {
-    // Ignore clicks on the expand/collapse toggle
+    // If clicking the expand/collapse icon, don't trigger album click
     if ((e.target as HTMLElement).closest('.toggle-area')) return;
-
-    // Ctrl+click → multi-select toggle
-    if (e.ctrlKey) {
-      onMultiSelect();
-      return;
-    }
-
-    // Normal click → single select
     onAlbumClick();
   }}
 >
+  <!-- Expand / collapse toggle -->
   {#if hasChildren}
     <div class="toggle-area flex items-center" on:click|stopPropagation={onToggle}>
       <Icon
@@ -47,6 +41,7 @@
       />
     </div>
   {:else}
+    <!-- Spacer for alignment -->
     <div style="width: 18px;"></div>
   {/if}
 
@@ -63,6 +58,7 @@
     {/if}
   </span>
 
+  <!-- Album name -->
   <div class="flex flex-col flex-1 min-w-0">
     <span class="truncate font-medium" title={album.albumName}>
       {album.albumName}
@@ -73,6 +69,7 @@
     </span>
   </div>
 
+  <!-- Multi-select checkmark -->
   {#if multiSelected}
     <Icon icon={mdiCheck} size="18" class="text-immich-primary dark:text-immich-dark-primary" />
   {/if}

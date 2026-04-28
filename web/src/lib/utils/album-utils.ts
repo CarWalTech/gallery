@@ -22,12 +22,13 @@ import { get } from 'svelte/store';
  * Albums General Management
  * -------------------------
  */
-export const createAlbum = async (name?: string, assetIds?: string[]) => {
+export const createAlbum = async (name?: string, assetIds?: string[], parentId?: string) => {
   try {
     const newAlbum: AlbumResponseDto = await sdk.createAlbum({
       createAlbumDto: {
         albumName: name ?? '',
-        assetIds,
+        assetIds: assetIds,
+        parentId: parentId ?? '',
       },
     });
     eventManager.emit('AlbumCreate', newAlbum);
@@ -40,6 +41,13 @@ export const createAlbum = async (name?: string, assetIds?: string[]) => {
 
 export const createAlbumAndRedirect = async (name?: string, assetIds?: string[]) => {
   const newAlbum = await createAlbum(name, assetIds);
+  if (newAlbum) {
+    await goto(Route.viewAlbum(newAlbum));
+  }
+};
+
+export const createSubAlbumAndRedirect = async (parentId: string, name?: string) => {
+  const newAlbum = await createAlbum(name, undefined, parentId);
   if (newAlbum) {
     await goto(Route.viewAlbum(newAlbum));
   }

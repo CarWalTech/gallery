@@ -5,13 +5,16 @@
     AlbumModalRowType,
     isSelectableRowType,
   } from '$lib/components/shared-components/album-selection/album-selection-utils';
+
   import { eventManager } from '$lib/managers/event-manager.svelte';
   import { albumViewSettings } from '$lib/stores/preferences.store';
+
   import { createAlbum, getAllAlbums, type AlbumResponseDto } from '@immich/sdk';
   import { Button, Icon, Modal, ModalBody, ModalFooter, Text } from '@immich/ui';
   import { mdiKeyboardReturn } from '@mdi/js';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
+
   import AlbumListItem from '../components/asset-viewer/album-list-item.svelte';
   import NewAlbumListItem from '../components/shared-components/album-selection/new-album-list-item.svelte';
 
@@ -21,6 +24,8 @@
   let search = $state('');
   let selectedRowIndex: number = $state(-1);
 
+  let expandedState = $state<Record<string, boolean>>({});
+
   interface Props {
     onClose: (albums?: AlbumResponseDto[]) => void;
   }
@@ -28,22 +33,31 @@
   let { onClose }: Props = $props();
 
   onMount(async () => {
-    // TODO the server should *really* just return all albums (paginated ideally)
     const ownedAlbums = await getAllAlbums({ shared: false });
     ownedAlbums.push.apply(ownedAlbums, await getAllAlbums({ shared: true }));
+
     albums = ownedAlbums;
     recentAlbums = albums.sort((a, b) => (new Date(a.updatedAt) > new Date(b.updatedAt) ? -1 : 1)).slice(0, 3);
+
     loading = false;
   });
 
   const multiSelectedAlbumIds: string[] = $state([]);
   const multiSelectActive = $derived(multiSelectedAlbumIds.length > 0);
 
-  const rowConverter = new AlbumModalRowConverter($albumViewSettings.sortBy, $albumViewSettings.sortOrder);
+  const rowConverter = new AlbumModalRowConverter(
+    $albumViewSettings.sortBy,
+    $albumViewSettings.sortOrder,
+    expandedState,
+  );
+
   const albumModalRows = $derived(
     rowConverter.toModalRows(search, recentAlbums, albums, selectedRowIndex, multiSelectedAlbumIds),
   );
-  const selectableRowCount = $derived(albumModalRows.filter((row) => isSelectableRowType(row.type)).length);
+
+  const selectableRows = $derived(albumModalRows.filter((row) => isSelectableRowType(row.type)));
+
+  const selectableRowCount = $derived(selectableRows.length);
 
   const onNewAlbum = async (name: string) => {
     const album = await createAlbum({ createAlbumDto: { albumName: name } });
@@ -64,18 +78,16 @@
   };
 
   const handleMultiSelect = (album?: AlbumResponseDto) => {
-    const selectedAlbum = album ?? albumModalRows.find(({ selected }) => selected)?.album;
+    const selectedAlbum = album ?? selectableRows[selectedRowIndex]?.album;
 
-    if (!selectedAlbum) {
-      return;
-    }
+    if (!selectedAlbum) return;
 
     const index = multiSelectedAlbumIds.indexOf(selectedAlbum.id);
     if (index === -1) {
       multiSelectedAlbumIds.push(selectedAlbum.id);
-      return;
+    } else {
+      multiSelectedAlbumIds.splice(index, 1);
     }
-    multiSelectedAlbumIds.splice(index, 1);
   };
 
   const handleMultiSubmit = () => {
@@ -88,17 +100,15 @@
   };
 
   const onEnter = async () => {
-    const item = albumModalRows.find(({ selected }) => selected);
-    if (!item) {
-      return;
-    }
+    const item = selectableRows[selectedRowIndex];
+    if (!item) return;
 
     switch (item.type) {
-      case AlbumModalRowType.NEW_ALBUM: {
+      case AlbumModalRowType.NEW_ALBUM:
         await onNewAlbum(search);
         break;
-      }
-      case AlbumModalRowType.ALBUM_ITEM: {
+
+      case AlbumModalRowType.ALBUM_ITEM:
         if (multiSelectActive) {
           handleMultiSubmit();
           break;
@@ -107,7 +117,6 @@
           onClose([item.album]);
         }
         break;
-      }
     }
 
     selectedRowIndex = -1;
@@ -115,37 +124,28 @@
 
   const onkeydown = async (e: KeyboardEvent) => {
     switch (e.key) {
-      case 'ArrowUp': {
+      case 'ArrowUp':
         e.preventDefault();
-        if (selectedRowIndex > 0) {
-          selectedRowIndex--;
-        } else {
-          selectedRowIndex = selectableRowCount - 1;
-        }
+        selectedRowIndex = selectedRowIndex > 0 ? selectedRowIndex - 1 : selectableRowCount - 1;
         break;
-      }
-      case 'ArrowDown': {
+
+      case 'ArrowDown':
         e.preventDefault();
-        if (selectedRowIndex < selectableRowCount - 1) {
-          selectedRowIndex++;
-        } else {
-          selectedRowIndex = 0;
-        }
+        selectedRowIndex = selectedRowIndex < selectableRowCount - 1 ? selectedRowIndex + 1 : 0;
         break;
-      }
-      case 'Enter': {
+
+      case 'Enter':
         e.preventDefault();
         await onEnter();
         break;
-      }
-      case 'Control': {
+
+      case 'Control':
         e.preventDefault();
         handleMultiSelect();
         break;
-      }
-      default: {
+
+      default:
         selectedRowIndex = -1;
-      }
     }
   };
 </script>
@@ -154,7 +154,6 @@
   <ModalBody>
     <div class="mb-2 flex max-h-100 flex-col">
       {#if loading}
-        <!-- eslint-disable-next-line svelte/require-each-key -->
         {#each { length: 3 } as _}
           <div class="flex animate-pulse gap-4 px-6 py-2">
             <div class="h-12 w-12 rounded-xl bg-slate-200"></div>
@@ -175,8 +174,8 @@
           bind:value={search}
           use:initInput
         />
+
         <div class="immich-scrollbar overflow-y-auto">
-          <!-- eslint-disable-next-line svelte/require-each-key -->
           {#each albumModalRows as row}
             {#if row.type === AlbumModalRowType.NEW_ALBUM}
               <NewAlbumListItem selected={row.selected || false} {onNewAlbum} searchQuery={search} />
@@ -190,6 +189,10 @@
                 selected={row.selected || false}
                 multiSelected={row.multiSelected}
                 searchQuery={search}
+                depth={row.depth}
+                hasChildren={row.hasChildren}
+                expanded={row.expanded}
+                onToggle={() => rowConverter.toggle(row.album.id)}
                 onAlbumClick={() => handleAlbumClick(row.album)}
                 onMultiSelect={() => handleMultiSelect(row.album)}
               />
@@ -198,12 +201,16 @@
         </div>
       {/if}
     </div>
+
     {#if multiSelectActive}
-      <Button size="small" shape="round" fullWidth onclick={handleMultiSubmit}
-        >{$t('add_to_albums_count', { values: { count: multiSelectedAlbumIds.length } })}</Button
-      >
+      <Button size="small" shape="round" fullWidth onclick={handleMultiSubmit}>
+        {$t('add_to_albums_count', {
+          values: { count: multiSelectedAlbumIds.length },
+        })}
+      </Button>
     {/if}
   </ModalBody>
+
   <ModalFooter>
     <div class="flex justify-around w-full">
       <div class="flex gap-4">
@@ -213,6 +220,7 @@
           </span>
           <Text size="tiny">{$t('to_select')}</Text>
         </div>
+
         <div class="flex gap-1 place-items-center">
           <span class="bg-gray-300 dark:bg-gray-500 rounded p-1">
             <Text size="tiny">CTRL</Text>

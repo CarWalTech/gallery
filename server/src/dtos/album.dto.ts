@@ -37,6 +37,7 @@ const CreateAlbumSchema = z
     description: z.string().optional().describe('Album description'),
     albumUsers: z.array(AlbumUserCreateSchema).optional().describe('Album users'),
     assetIds: z.array(z.uuidv4()).optional().describe('Initial asset IDs'),
+    parentId: z.string().describe('Parent album ID for nesting'),
   })
   .meta({ id: 'CreateAlbumDto' });
 
@@ -130,6 +131,8 @@ export const AlbumResponseSchema = z
     isActivityEnabled: z.boolean().describe('Activity feed enabled'),
     order: AssetOrderSchema.optional(),
     contributorCounts: z.array(ContributorCountResponseSchema).optional(),
+    parentId: z.string().nullable().describe('Parent album ID'),
+    childAlbumCount: z.int().min(0).describe('Number of child (sub) albums'),
   })
   .meta({ id: 'AlbumResponseDto' });
 
@@ -159,6 +162,8 @@ export type MapAlbumDto = {
   owner: ShallowDehydrateObject<User>;
   isActivityEnabled: boolean;
   order: AssetOrder;
+  parentId?: string | null;
+  childAlbumCount?: number;
 };
 
 export const mapAlbum = (entity: MaybeDehydrated<MapAlbumDto>): AlbumResponseDto => {
@@ -205,5 +210,7 @@ export const mapAlbum = (entity: MaybeDehydrated<MapAlbumDto>): AlbumResponseDto
     assetCount: entity.assets?.length || 0,
     isActivityEnabled: entity.isActivityEnabled,
     order: entity.order,
+    parentId: entity.parentId ?? null,
+    childAlbumCount: entity.childAlbumCount ?? 0,
   };
 };

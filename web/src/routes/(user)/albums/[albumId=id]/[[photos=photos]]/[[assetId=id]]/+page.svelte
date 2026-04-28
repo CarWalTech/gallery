@@ -1,20 +1,20 @@
 <script lang="ts">
   import { goto, invalidate, onNavigate } from '$app/navigation';
   import { scrollMemoryClearer } from '$lib/actions/scroll-memory';
-  import AlbumDescription from './album-description.svelte';
+  import AlbumBreadcrumbs from '$lib/components/album-page/album-breadcrumbs.svelte';
   import AlbumMap from '$lib/components/album-page/album-map.svelte';
   import AlbumSummary from '$lib/components/album-page/album-summary.svelte';
-  import AlbumTitle from './album-title.svelte';
+  import SubAlbumsSection from '$lib/components/album-page/sub-albums-section.svelte';
   import ActivityStatus from '$lib/components/asset-viewer/activity-status.svelte';
   import ActivityViewer from '$lib/components/asset-viewer/activity-viewer.svelte';
   import ActiveFiltersBar from '$lib/components/filter-panel/active-filters-bar.svelte';
-  import FilterPanel from '$lib/components/filter-panel/filter-panel.svelte';
   import {
     clearFilters,
     createFilterState,
     getActiveFilterCount,
     type FilterState,
   } from '$lib/components/filter-panel/filter-panel';
+  import FilterPanel from '$lib/components/filter-panel/filter-panel.svelte';
   import HeaderActionButton from '$lib/components/HeaderActionButton.svelte';
   import OnEvents from '$lib/components/OnEvents.svelte';
   import ButtonContextMenu from '$lib/components/shared-components/context-menu/button-context-menu.svelte';
@@ -89,9 +89,11 @@
   } from '@mdi/js';
   import { onDestroy } from 'svelte';
   import { t } from 'svelte-i18n';
-  import { fly } from 'svelte/transition';
   import { SvelteMap } from 'svelte/reactivity';
+  import { fly } from 'svelte/transition';
   import type { PageData } from './$types';
+  import AlbumDescription from './album-description.svelte';
+  import AlbumTitle from './album-title.svelte';
 
   interface Props {
     data: PageData;
@@ -368,7 +370,7 @@
 
   const onAlbumDelete = async ({ id }: AlbumResponseDto) => {
     if (id === album.id) {
-      await goto(Route.albums());
+      await goto(album.parentId ? Route.viewAlbum({ id: album.parentId }) : Route.albums());
       viewMode = AlbumPageViewMode.VIEW;
     }
   };
@@ -524,8 +526,12 @@
             >
               {#if viewMode !== AlbumPageViewMode.SELECT_ASSETS}
                 {#if viewMode !== AlbumPageViewMode.SELECT_THUMBNAIL}
+                  <!-- BREADCRUMBS -->
+                  <section class="pt-8 md:pt-24 pb-0">
+                    <AlbumBreadcrumbs {album} />
+                  </section>
                   <!-- ALBUM TITLE -->
-                  <section class="pt-8 md:pt-24">
+                  <section class="pt-2">
                     <AlbumTitle
                       id={album.id}
                       albumName={album.albumName}
@@ -584,6 +590,9 @@
                       {isOwned}
                       bind:description={() => album.description, (description) => (album = { ...album, description })}
                     />
+
+                    <!-- SUB-ALBUMS -->
+                    <SubAlbumsSection {album} {isOwned} />
                   </section>
                 {/if}
 
@@ -672,7 +681,11 @@
       </AssetSelectControlBar>
     {:else}
       {#if viewMode === AlbumPageViewMode.VIEW}
-        <ControlAppBar showBackButton backIcon={mdiArrowLeft} onClose={() => goto(Route.albums())}>
+        <ControlAppBar
+          showBackButton
+          backIcon={mdiArrowLeft}
+          onClose={() => goto(album.parentId ? Route.viewAlbum({ id: album.parentId }) : Route.albums())}
+        >
           {#snippet trailing()}
             <ActionButton action={Cast} />
 

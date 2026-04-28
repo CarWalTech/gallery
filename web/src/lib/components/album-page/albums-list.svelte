@@ -135,15 +135,27 @@
       }
     }
   });
+
+  let rootAlbums = $derived.by(() => {
+    const allIds = new Set(albums.map((a) => a.id));
+
+    return albums.filter((a) => {
+      if (a.parentId === undefined) {
+        return true;
+      }
+      return !allIds.has(a.parentId);
+    });
+  });
+
   const normalizedSearchQuery = $derived(normalizeSearchString(searchQuery));
   let filteredAlbums = $derived(
     normalizedSearchQuery
-      ? albums.filter(
+      ? rootAlbums.filter(
           ({ albumName, description }) =>
             normalizeSearchString(albumName).includes(normalizedSearchQuery) ||
             normalizeSearchString(description).includes(normalizedSearchQuery),
         )
-      : albums,
+      : rootAlbums,
   );
 
   let albumGroupOption = $derived(getSelectedAlbumGroupOption(userSettings));
@@ -251,7 +263,7 @@
 
 <OnEvents {onAlbumUpdate} {onAlbumDelete} {onSharedLinkCreate} />
 
-{#if albums.length > 0}
+{#if rootAlbums.length > 0}
   {#if userSettings.view === AlbumViewMode.Cover}
     <!-- Album Cards -->
     {#if albumGroupOption === AlbumGroupBy.None}

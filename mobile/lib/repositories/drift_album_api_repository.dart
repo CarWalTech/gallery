@@ -114,6 +114,7 @@ extension on AlbumResponseDto {
       assetCount: assetCount,
       ownerName: owner.name,
       isShared: albumUsers.length > 2,
+      parentId: parentId,
     );
   }
 }

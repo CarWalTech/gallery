@@ -125,7 +125,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
       ..orderBy([(row) => OrderingTerm.desc(row.createdAt)])
       ..limit(1);
 
-    return query.map((row) => row.toDto(ownerName: '', isShared: false)).getSingleOrNull();
+    return query.map((row) => row.toDto(ownerName: '', isShared: false, parentId: row.parentId)).getSingleOrNull();
   }
 
   Future<void> create(RemoteAlbum album, List<String> assetIds) async {

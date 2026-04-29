@@ -698,6 +698,10 @@ class ApiClient {
           return SignUpDto.fromJson(value);
         case 'SmartSearchDto':
           return SmartSearchDto.fromJson(value);
+        case 'SmartSearchFacetsDto':
+          return SmartSearchFacetsDto.fromJson(value);
+        case 'SmartSearchFacetsResponseDto':
+          return SmartSearchFacetsResponseDto.fromJson(value);
         case 'SourceType':
           return SourceTypeTypeTransformer().decode(value);
         case 'StackCreateDto':
@@ -844,6 +848,8 @@ class ApiClient {
           return SystemConfigMachineLearningDto.fromJson(value);
         case 'SystemConfigMapDto':
           return SystemConfigMapDto.fromJson(value);
+        case 'SystemConfigMemoriesDto':
+          return SystemConfigMemoriesDto.fromJson(value);
         case 'SystemConfigMetadataDto':
           return SystemConfigMetadataDto.fromJson(value);
         case 'SystemConfigNewVersionCheckDto':

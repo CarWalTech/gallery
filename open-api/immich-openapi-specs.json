@@ -20627,8 +20627,7 @@
           }
         },
         "required": [
-          "albumName",
-          "parentId"
+          "albumName"
         ],
         "type": "object"
       },

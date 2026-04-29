@@ -688,6 +688,8 @@ export type CreateAlbumDto = {
     assetIds?: string[];
     /** Album description */
     description?: string;
+    /** Album parent id */
+    parentId?: string;
 };
 export type AlbumsAddAssetsDto = {
     /** Album IDs */

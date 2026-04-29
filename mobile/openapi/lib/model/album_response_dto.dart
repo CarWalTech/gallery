@@ -17,6 +17,7 @@ class AlbumResponseDto {
     required this.albumThumbnailAssetId,
     this.albumUsers = const [],
     required this.assetCount,
+    required this.childAlbumCount,
     this.contributorCounts = const [],
     required this.createdAt,
     required this.description,
@@ -28,6 +29,7 @@ class AlbumResponseDto {
     this.order,
     required this.owner,
     required this.ownerId,
+    required this.parentId,
     required this.shared,
     this.startDate,
     required this.updatedAt,
@@ -46,6 +48,12 @@ class AlbumResponseDto {
   /// Minimum value: 0
   /// Maximum value: 9007199254740991
   int assetCount;
+
+  /// Number of child (sub) albums
+  ///
+  /// Minimum value: 0
+  /// Maximum value: 9007199254740991
+  int childAlbumCount;
 
   List<ContributorCountResponseDto> contributorCounts;
 
@@ -95,6 +103,9 @@ class AlbumResponseDto {
   /// Owner user ID
   String ownerId;
 
+  /// Parent album ID
+  String? parentId;
+
   /// Is shared album
   bool shared;
 
@@ -116,6 +127,7 @@ class AlbumResponseDto {
     other.albumThumbnailAssetId == albumThumbnailAssetId &&
     _deepEquality.equals(other.albumUsers, albumUsers) &&
     other.assetCount == assetCount &&
+    other.childAlbumCount == childAlbumCount &&
     _deepEquality.equals(other.contributorCounts, contributorCounts) &&
     other.createdAt == createdAt &&
     other.description == description &&
@@ -127,6 +139,7 @@ class AlbumResponseDto {
     other.order == order &&
     other.owner == owner &&
     other.ownerId == ownerId &&
+    other.parentId == parentId &&
     other.shared == shared &&
     other.startDate == startDate &&
     other.updatedAt == updatedAt;
@@ -138,6 +151,7 @@ class AlbumResponseDto {
     (albumThumbnailAssetId == null ? 0 : albumThumbnailAssetId!.hashCode) +
     (albumUsers.hashCode) +
     (assetCount.hashCode) +
+    (childAlbumCount.hashCode) +
     (contributorCounts.hashCode) +
     (createdAt.hashCode) +
     (description.hashCode) +
@@ -149,12 +163,13 @@ class AlbumResponseDto {
     (order == null ? 0 : order!.hashCode) +
     (owner.hashCode) +
     (ownerId.hashCode) +
+    (parentId == null ? 0 : parentId!.hashCode) +
     (shared.hashCode) +
     (startDate == null ? 0 : startDate!.hashCode) +
     (updatedAt.hashCode);
 
   @override
-  String toString() => 'AlbumResponseDto[albumName=$albumName, albumThumbnailAssetId=$albumThumbnailAssetId, albumUsers=$albumUsers, assetCount=$assetCount, contributorCounts=$contributorCounts, createdAt=$createdAt, description=$description, endDate=$endDate, hasSharedLink=$hasSharedLink, id=$id, isActivityEnabled=$isActivityEnabled, lastModifiedAssetTimestamp=$lastModifiedAssetTimestamp, order=$order, owner=$owner, ownerId=$ownerId, shared=$shared, startDate=$startDate, updatedAt=$updatedAt]';
+  String toString() => 'AlbumResponseDto[albumName=$albumName, albumThumbnailAssetId=$albumThumbnailAssetId, albumUsers=$albumUsers, assetCount=$assetCount, childAlbumCount=$childAlbumCount, contributorCounts=$contributorCounts, createdAt=$createdAt, description=$description, endDate=$endDate, hasSharedLink=$hasSharedLink, id=$id, isActivityEnabled=$isActivityEnabled, lastModifiedAssetTimestamp=$lastModifiedAssetTimestamp, order=$order, owner=$owner, ownerId=$ownerId, parentId=$parentId, shared=$shared, startDate=$startDate, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -166,6 +181,7 @@ class AlbumResponseDto {
     }
       json[r'albumUsers'] = this.albumUsers;
       json[r'assetCount'] = this.assetCount;
+      json[r'childAlbumCount'] = this.childAlbumCount;
       json[r'contributorCounts'] = this.contributorCounts;
       json[r'createdAt'] = this.createdAt.toUtc().toIso8601String();
       json[r'description'] = this.description;
@@ -189,6 +205,11 @@ class AlbumResponseDto {
     }
       json[r'owner'] = this.owner;
       json[r'ownerId'] = this.ownerId;
+    if (this.parentId != null) {
+      json[r'parentId'] = this.parentId;
+    } else {
+    //  json[r'parentId'] = null;
+    }
       json[r'shared'] = this.shared;
     if (this.startDate != null) {
       json[r'startDate'] = this.startDate!.toUtc().toIso8601String();
@@ -212,6 +233,7 @@ class AlbumResponseDto {
         albumThumbnailAssetId: mapValueOfType<String>(json, r'albumThumbnailAssetId'),
         albumUsers: AlbumUserResponseDto.listFromJson(json[r'albumUsers']),
         assetCount: mapValueOfType<int>(json, r'assetCount')!,
+        childAlbumCount: mapValueOfType<int>(json, r'childAlbumCount')!,
         contributorCounts: ContributorCountResponseDto.listFromJson(json[r'contributorCounts']),
         createdAt: mapDateTime(json, r'createdAt', r'')!,
         description: mapValueOfType<String>(json, r'description')!,
@@ -223,6 +245,7 @@ class AlbumResponseDto {
         order: AssetOrder.fromJson(json[r'order']),
         owner: UserResponseDto.fromJson(json[r'owner'])!,
         ownerId: mapValueOfType<String>(json, r'ownerId')!,
+        parentId: mapValueOfType<String>(json, r'parentId'),
         shared: mapValueOfType<bool>(json, r'shared')!,
         startDate: mapDateTime(json, r'startDate', r''),
         updatedAt: mapDateTime(json, r'updatedAt', r'')!,
@@ -277,6 +300,7 @@ class AlbumResponseDto {
     'albumThumbnailAssetId',
     'albumUsers',
     'assetCount',
+    'childAlbumCount',
     'createdAt',
     'description',
     'hasSharedLink',
@@ -284,6 +308,7 @@ class AlbumResponseDto {
     'isActivityEnabled',
     'owner',
     'ownerId',
+    'parentId',
     'shared',
     'updatedAt',
   };

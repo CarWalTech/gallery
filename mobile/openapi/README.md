@@ -93,6 +93,7 @@ Class | Method | HTTP request | Description
 *AlbumsApi* | [**getAlbumNames**](doc//AlbumsApi.md#getalbumnames) | **GET** /albums/names | Retrieve album names
 *AlbumsApi* | [**getAlbumStatistics**](doc//AlbumsApi.md#getalbumstatistics) | **GET** /albums/statistics | Retrieve album statistics
 *AlbumsApi* | [**getAllAlbums**](doc//AlbumsApi.md#getallalbums) | **GET** /albums | List all albums
+*AlbumsApi* | [**getChildAlbums**](doc//AlbumsApi.md#getchildalbums) | **GET** /albums/{id}/children | Get child albums
 *AlbumsApi* | [**removeAssetFromAlbum**](doc//AlbumsApi.md#removeassetfromalbum) | **DELETE** /albums/{id}/assets | Remove assets from an album
 *AlbumsApi* | [**removeUserFromAlbum**](doc//AlbumsApi.md#removeuserfromalbum) | **DELETE** /albums/{id}/user/{userId} | Remove user from album
 *AlbumsApi* | [**updateAlbumInfo**](doc//AlbumsApi.md#updatealbuminfo) | **PATCH** /albums/{id} | Update an album

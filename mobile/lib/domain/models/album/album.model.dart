@@ -24,6 +24,7 @@ class RemoteAlbum {
   final int assetCount;
   final String ownerName;
   final bool isShared;
+  final String? parentId;
 
   const RemoteAlbum({
     required this.id,
@@ -38,6 +39,7 @@ class RemoteAlbum {
     required this.assetCount,
     required this.ownerName,
     required this.isShared,
+    this.parentId,
   });
 
   @override
@@ -51,6 +53,7 @@ class RemoteAlbum {
     updatedAt: $updatedAt,
     isActivityEnabled: $isActivityEnabled,
     order: $order,
+    parentId: ${parentId ?? "<NA>"}
     thumbnailAssetId: ${thumbnailAssetId ?? "<NA>"}
     assetCount: $assetCount
     ownerName: $ownerName
@@ -73,7 +76,8 @@ class RemoteAlbum {
         order == other.order &&
         assetCount == other.assetCount &&
         ownerName == other.ownerName &&
-        isShared == other.isShared;
+        isShared == other.isShared &&
+        parentId == other.parentId;
   }
 
   @override
@@ -89,7 +93,8 @@ class RemoteAlbum {
         order.hashCode ^
         assetCount.hashCode ^
         ownerName.hashCode ^
-        isShared.hashCode;
+        isShared.hashCode ^
+        parentId.hashCode;
   }
 
   RemoteAlbum copyWith({
@@ -105,6 +110,7 @@ class RemoteAlbum {
     int? assetCount,
     String? ownerName,
     bool? isShared,
+    String? parentId,
   }) {
     return RemoteAlbum(
       id: id ?? this.id,
@@ -119,6 +125,7 @@ class RemoteAlbum {
       assetCount: assetCount ?? this.assetCount,
       ownerName: ownerName ?? this.ownerName,
       isShared: isShared ?? this.isShared,
+      parentId: parentId ?? this.parentId,
     );
   }
 }

@@ -27,6 +27,8 @@ class RemoteAlbumEntity extends Table with DriftDefaultsMixin {
 
   IntColumn get order => intEnum<AlbumAssetOrder>()();
 
+  TextColumn get parentId => text().nullable().named("parent_id")();
+
   @override
   Set<Column> get primaryKey => {id};
 }

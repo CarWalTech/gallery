@@ -91,6 +91,91 @@ where
   "album"."id" = $1
   and "album"."deletedAt" is null
 
+-- AlbumRepository.getChildAlbums
+select
+  "album".*,
+  (
+    select
+      to_json(obj)
+    from
+      (
+        select
+          "id",
+          "name",
+          "email",
+          "avatarColor",
+          "profileImagePath",
+          "profileChangedAt"
+        from
+          "user"
+        where
+          "user"."id" = "album"."ownerId"
+      ) as obj
+  ) as "owner",
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "album_user"."role",
+          (
+            select
+              to_json(obj)
+            from
+              (
+                select
+                  "id",
+                  "name",
+                  "email",
+                  "avatarColor",
+                  "profileImagePath",
+                  "profileChangedAt"
+                from
+                  "user"
+                where
+                  "user"."id" = "album_user"."userId"
+              ) as obj
+          ) as "user"
+        from
+          "album_user"
+        where
+          "album_user"."albumId" = "album"."id"
+      ) as agg
+  ) as "albumUsers",
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "shared_link".*
+        from
+          "shared_link"
+        where
+          "shared_link"."albumId" = "album"."id"
+      ) as agg
+  ) as "sharedLinks"
+from
+  "album"
+where
+  "album"."parentId" = $1
+  and "album"."deletedAt" is null
+order by
+  "album"."createdAt" desc
+
+-- AlbumRepository.getChildAlbumCounts
+select
+  "album"."parentId" as "albumId",
+  count("album"."id")::int as "childCount"
+from
+  "album"
+where
+  "album"."parentId" in ($1)
+  and "album"."deletedAt" is null
+group by
+  "album"."parentId"
+
 -- AlbumRepository.getByAssetId
 select
   "album".*,

@@ -44,6 +44,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
       ..addColumns([assetCount])
       ..addColumns([_db.userEntity.name])
       ..addColumns([_db.remoteAlbumUserEntity.userId.count(distinct: true)])
+      ..addColumns([_db.remoteAlbumEntity.parentId])
       ..groupBy([_db.remoteAlbumEntity.id]);
 
     if (sortBy.isNotEmpty) {
@@ -65,6 +66,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
                 assetCount: row.read(assetCount) ?? 0,
                 ownerName: row.read(_db.userEntity.name)!,
                 isShared: row.read(_db.remoteAlbumUserEntity.userId.count(distinct: true))! > 0,
+                parentId: row.read(_db.remoteAlbumEntity.parentId),
               ),
         )
         .get();
@@ -100,6 +102,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
           ..addColumns([assetCount])
           ..addColumns([_db.userEntity.name])
           ..addColumns([_db.remoteAlbumUserEntity.userId.count(distinct: true)])
+          ..addColumns([_db.remoteAlbumEntity.parentId])
           ..groupBy([_db.remoteAlbumEntity.id]);
 
     return query
@@ -110,6 +113,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
                 assetCount: row.read(assetCount) ?? 0,
                 ownerName: row.read(_db.userEntity.name)!,
                 isShared: row.read(_db.remoteAlbumUserEntity.userId.count(distinct: true))! > 0,
+                parentId: row.read(_db.remoteAlbumEntity.parentId),
               ),
         )
         .getSingleOrNull();
@@ -136,6 +140,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
         thumbnailAssetId: Value(album.thumbnailAssetId),
         isActivityEnabled: Value(album.isActivityEnabled),
         order: Value(album.order),
+        parentId: Value(album.parentId),
       );
 
       await _db.remoteAlbumEntity.insertOne(entity);
@@ -164,6 +169,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
         thumbnailAssetId: Value(album.thumbnailAssetId),
         isActivityEnabled: Value(album.isActivityEnabled),
         order: Value(album.order),
+        parentId: Value(album.parentId),
       ),
     );
   }
@@ -309,6 +315,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
           ..where(_db.remoteAlbumEntity.id.equals(albumId))
           ..addColumns([_db.userEntity.name])
           ..addColumns([_db.remoteAlbumUserEntity.userId.count(distinct: true)])
+          ..addColumns([_db.remoteAlbumEntity.parentId])
           ..groupBy([_db.remoteAlbumEntity.id]);
 
     return query.map((row) {
@@ -317,6 +324,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
           .toDto(
             ownerName: row.read(_db.userEntity.name)!,
             isShared: row.read(_db.remoteAlbumUserEntity.userId.count(distinct: true))! > 0,
+            parentId: row.read(_db.remoteAlbumEntity.parentId),
           );
 
       return album;
@@ -430,6 +438,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
           ..where(_db.remoteAlbumEntity.id.isIn(albumIds) & _db.remoteAssetEntity.deletedAt.isNull())
           ..addColumns([assetCount])
           ..addColumns([_db.remoteAlbumUserEntity.userId.count(distinct: true)])
+          ..addColumns([_db.remoteAlbumEntity.parentId])
           ..addColumns([_db.userEntity.name])
           ..groupBy([_db.remoteAlbumEntity.id]);
 
@@ -440,6 +449,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
               .toDto(
                 ownerName: row.read(_db.userEntity.name) ?? '',
                 isShared: row.read(_db.remoteAlbumUserEntity.userId.count(distinct: true))! > 0,
+                parentId: row.read(_db.remoteAlbumEntity.parentId),
                 assetCount: row.read(assetCount) ?? 0,
               ),
         )
@@ -448,7 +458,7 @@ class DriftRemoteAlbumRepository extends DriftDatabaseRepository {
 }
 
 extension on RemoteAlbumEntityData {
-  RemoteAlbum toDto({int assetCount = 0, required String ownerName, required bool isShared}) {
+  RemoteAlbum toDto({int assetCount = 0, required String ownerName, required bool isShared, String? parentId}) {
     return RemoteAlbum(
       id: id,
       name: name,
@@ -462,6 +472,7 @@ extension on RemoteAlbumEntityData {
       assetCount: assetCount,
       ownerName: ownerName,
       isShared: isShared,
+      parentId: parentId,
     );
   }
 }

@@ -1459,7 +1459,7 @@ describe(MetadataService.name, () => {
       expect(mocks.sharedSpace.getSpaceIdsForAsset).toHaveBeenCalledWith(asset.id);
       expect(mocks.job.queueAll).toHaveBeenCalledWith([
         {
-          name: JobName.SharedSpaceFaceMatch,
+          name: JobName.SharedSpaceFaceMatchFromBackfill,
           data: { spaceId: 'space-1', assetId: asset.id },
         },
       ]);

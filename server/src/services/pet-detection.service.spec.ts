@@ -23,6 +23,23 @@ const makePerson = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const petFaceIsolationJobNames = [
+  JobName.AssetDetectFacesQueueAll,
+  JobName.FacialRecognitionQueueAll,
+  JobName.FaceIdentityBackfill,
+  JobName.SharedSpaceFaceMatch,
+];
+
+const getQueuedJobNames = (mocks: ServiceMocks) =>
+  mocks.job.queueAll.mock.calls.flatMap(([jobs]) => jobs).map((job) => job.name);
+
+const expectNoQueuedJobNames = (mocks: ServiceMocks, names: JobName[]) => {
+  const queuedJobNames = getQueuedJobNames(mocks);
+  for (const name of names) {
+    expect(queuedJobNames).not.toContain(name);
+  }
+};
+
 describe(PetDetectionService.name, () => {
   let sut: PetDetectionService;
   let mocks: ServiceMocks;
@@ -53,6 +70,13 @@ describe(PetDetectionService.name, () => {
       expect(await sut.handleQueuePetDetection({ force: false })).toEqual(JobStatus.Skipped);
     });
 
+    it('should not queue pet jobs when pet detection is disabled', async () => {
+      expect(await sut.handleQueuePetDetection({ force: false })).toEqual(JobStatus.Skipped);
+
+      expect(mocks.assetJob.streamForPetDetectionJob).not.toHaveBeenCalled();
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+    });
+
     it('should queue assets for pet detection', async () => {
       const asset = AssetFactory.create();
       mocks.systemMetadata.get.mockResolvedValue({
@@ -64,6 +88,7 @@ describe(PetDetectionService.name, () => {
 
       expect(mocks.job.queueAll).toHaveBeenCalledWith([{ name: JobName.PetDetection, data: { id: asset.id } }]);
       expect(mocks.assetJob.streamForPetDetectionJob).toHaveBeenCalledWith(false);
+      expectNoQueuedJobNames(mocks, petFaceIsolationJobNames);
     });
 
     it('should pass force flag when queuing assets', async () => {
@@ -76,6 +101,21 @@ describe(PetDetectionService.name, () => {
       expect(await sut.handleQueuePetDetection({ force: true })).toEqual(JobStatus.Success);
 
       expect(mocks.assetJob.streamForPetDetectionJob).toHaveBeenCalledWith(true);
+    });
+
+    it('should queue pet detection jobs with force asset selection when force is true', async () => {
+      const asset = AssetFactory.create();
+      mocks.systemMetadata.get.mockResolvedValue({
+        machineLearning: { enabled: true, petDetection: { enabled: true } },
+      });
+      mocks.assetJob.streamForPetDetectionJob.mockReturnValue(makeStream([asset]));
+
+      expect(await sut.handleQueuePetDetection({ force: true })).toEqual(JobStatus.Success);
+
+      expect(mocks.assetJob.streamForPetDetectionJob).toHaveBeenCalledWith(true);
+      expect(mocks.job.queueAll).toHaveBeenCalledTimes(1);
+      expect(mocks.job.queueAll).toHaveBeenCalledWith([{ name: JobName.PetDetection, data: { id: asset.id } }]);
+      expectNoQueuedJobNames(mocks, petFaceIsolationJobNames);
     });
   });
 
@@ -93,12 +133,16 @@ describe(PetDetectionService.name, () => {
       expect(await sut.handlePetDetection({ id: '123' })).toEqual(JobStatus.Skipped);
 
       expect(mocks.machineLearning.detectPets).not.toHaveBeenCalled();
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+      expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
     });
 
     it('should skip if pet detection is disabled (default)', async () => {
       expect(await sut.handlePetDetection({ id: '123' })).toEqual(JobStatus.Skipped);
 
       expect(mocks.machineLearning.detectPets).not.toHaveBeenCalled();
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+      expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
     });
 
     it('should fail if asset not found', async () => {
@@ -108,6 +152,8 @@ describe(PetDetectionService.name, () => {
       expect(await sut.handlePetDetection({ id: 'non-existent' })).toEqual(JobStatus.Failed);
 
       expect(mocks.machineLearning.detectPets).not.toHaveBeenCalled();
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+      expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
     });
 
     it('should fail if asset has no preview file', async () => {
@@ -121,6 +167,8 @@ describe(PetDetectionService.name, () => {
       expect(await sut.handlePetDetection({ id: '123' })).toEqual(JobStatus.Failed);
 
       expect(mocks.machineLearning.detectPets).not.toHaveBeenCalled();
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+      expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
     });
 
     it('should skip hidden assets', async () => {
@@ -134,6 +182,8 @@ describe(PetDetectionService.name, () => {
       expect(await sut.handlePetDetection({ id: '123' })).toEqual(JobStatus.Skipped);
 
       expect(mocks.machineLearning.detectPets).not.toHaveBeenCalled();
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+      expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
     });
 
     it('should create new pet person when none exists for species', async () => {
@@ -172,6 +222,8 @@ describe(PetDetectionService.name, () => {
       expect(mocks.job.queueAll).toHaveBeenCalledWith([
         { name: JobName.PersonGenerateThumbnail, data: { id: 'person-id' } },
       ]);
+      expect(mocks.job.queueAll).toHaveBeenCalledTimes(1);
+      expectNoQueuedJobNames(mocks, petFaceIsolationJobNames);
     });
 
     it('should reuse existing pet person for same species', async () => {
@@ -192,6 +244,32 @@ describe(PetDetectionService.name, () => {
       expect(mocks.person.createAssetFace).toHaveBeenCalledWith(expect.objectContaining({ personId: 'existing-cat' }));
       expect(mocks.person.update).not.toHaveBeenCalled();
       expect(mocks.job.queueAll).toHaveBeenCalledWith([]);
+      expect(mocks.job.queueAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('should generate the first thumbnail for an existing pet species without a face asset', async () => {
+      const asset = AssetFactory.create();
+      mocks.systemMetadata.get.mockResolvedValue(enabledConfig);
+      mocks.machineLearning.detectPets.mockResolvedValue({
+        imageHeight: 100,
+        imageWidth: 200,
+        pets: [{ boundingBox: { x1: 10, y1: 20, x2: 30, y2: 40 }, score: 0.9, label: 'cat' }],
+      });
+      mocks.person.getByOwnerAndSpecies.mockResolvedValue(makePerson({ id: 'existing-cat', faceAssetId: null }));
+      mocks.person.createAssetFace.mockResolvedValue('new-face-id');
+      mocks.person.getById.mockResolvedValue(makePerson({ id: 'existing-cat', faceAssetId: null }));
+      mocks.person.update.mockResolvedValue({} as any);
+
+      expect(await sut.handlePetDetection({ id: asset.id })).toEqual(JobStatus.Success);
+
+      expect(mocks.person.create).not.toHaveBeenCalled();
+      expect(mocks.person.createAssetFace).toHaveBeenCalledWith(expect.objectContaining({ personId: 'existing-cat' }));
+      expect(mocks.person.update).toHaveBeenCalledWith({ id: 'existing-cat', faceAssetId: 'new-face-id' });
+      expect(mocks.job.queueAll).toHaveBeenCalledTimes(1);
+      expect(mocks.job.queueAll).toHaveBeenCalledWith([
+        { name: JobName.PersonGenerateThumbnail, data: { id: 'existing-cat' } },
+      ]);
+      expectNoQueuedJobNames(mocks, petFaceIsolationJobNames);
     });
 
     it('should reuse same person for multiple detections of same species in one photo', async () => {
@@ -283,6 +361,7 @@ describe(PetDetectionService.name, () => {
       expect(mocks.person.create).not.toHaveBeenCalled();
       expect(mocks.person.createAssetFace).not.toHaveBeenCalled();
       expect(mocks.job.queueAll).toHaveBeenCalledWith([]);
+      expect(mocks.job.queueAll).toHaveBeenCalledTimes(1);
       expect(mocks.asset.upsertJobStatus).toHaveBeenCalledWith(
         expect.objectContaining({ assetId: asset.id, petsDetectedAt: expect.any(Date) }),
       );
@@ -298,6 +377,9 @@ describe(PetDetectionService.name, () => {
 
         expect(mocks.person.create).not.toHaveBeenCalled();
         expect(mocks.person.createAssetFace).not.toHaveBeenCalled();
+        expect(mocks.job.queueAll).not.toHaveBeenCalled();
+        expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
+        expect(mocks.event.emit).not.toHaveBeenCalled();
       });
 
       it('should handle out of memory errors during inference', async () => {
@@ -308,6 +390,9 @@ describe(PetDetectionService.name, () => {
         expect(await sut.handlePetDetection({ id: asset.id })).toEqual(JobStatus.Failed);
 
         expect(mocks.person.create).not.toHaveBeenCalled();
+        expect(mocks.job.queueAll).not.toHaveBeenCalled();
+        expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
+        expect(mocks.event.emit).not.toHaveBeenCalled();
       });
 
       it('should handle model loading timeout errors', async () => {
@@ -316,6 +401,10 @@ describe(PetDetectionService.name, () => {
         mocks.machineLearning.detectPets.mockRejectedValue(new Error('model load timeout'));
 
         expect(await sut.handlePetDetection({ id: asset.id })).toEqual(JobStatus.Failed);
+
+        expect(mocks.job.queueAll).not.toHaveBeenCalled();
+        expect(mocks.asset.upsertJobStatus).not.toHaveBeenCalled();
+        expect(mocks.event.emit).not.toHaveBeenCalled();
       });
     });
   });

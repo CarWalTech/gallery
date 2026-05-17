@@ -11,6 +11,7 @@ import {
   JobName,
   JobStatus,
   MetadataKey,
+  QueueJobStatus,
   QueueName,
   SourceType,
   SystemMetadataKey,
@@ -87,11 +88,25 @@ describe(PersonService.name, () => {
 
       await sut.onBootstrap();
 
+      expect(mocks.job.queue).toHaveBeenCalledTimes(1);
       expect(mocks.job.queue).toHaveBeenCalledWith({
         name: JobName.FaceIdentityBackfill,
         data: {},
       });
-      expect(mocks.job.searchJobs).toHaveBeenCalledWith('peopleBackfill', expect.any(Object));
+      expect(mocks.job.searchJobs).toHaveBeenCalledWith(QueueName.PeopleBackfill, expect.any(Object));
+      expect(mocks.job.queue).not.toHaveBeenCalledWith(
+        expect.objectContaining({ name: JobName.AssetDetectFacesQueueAll }),
+      );
+      expect(mocks.job.queue).not.toHaveBeenCalledWith(
+        expect.objectContaining({ name: JobName.FacialRecognitionQueueAll }),
+      );
+      expect(mocks.job.queue).not.toHaveBeenCalledWith(
+        expect.objectContaining({ name: JobName.SharedSpaceFaceMatchAll }),
+      );
+      expect(mocks.job.queue).not.toHaveBeenCalledWith(
+        expect.objectContaining({ name: JobName.SharedSpaceFaceMatchFromBackfill }),
+      );
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
     });
 
     it('should skip identity backfill when no identity work remains', async () => {
@@ -100,6 +115,8 @@ describe(PersonService.name, () => {
       await sut.onBootstrap();
 
       expect(mocks.job.queue).not.toHaveBeenCalled();
+      expect(mocks.job.queueAll).not.toHaveBeenCalled();
+      expect(mocks.job.searchJobs).not.toHaveBeenCalled();
     });
 
     it('should not queue a new identity backfill root while another backfill page is pending', async () => {
@@ -131,6 +148,15 @@ describe(PersonService.name, () => {
 
       await sut.onBootstrap();
 
+      expect(mocks.job.searchJobs).toHaveBeenCalledWith(QueueName.PeopleBackfill, {
+        status: expect.arrayContaining([
+          QueueJobStatus.Active,
+          QueueJobStatus.Delayed,
+          QueueJobStatus.Paused,
+          QueueJobStatus.Waiting,
+        ]),
+      });
+      expect(mocks.job.searchJobs.mock.calls[0][1]?.status).toHaveLength(4);
       expect(mocks.job.queue).not.toHaveBeenCalled();
     });
   });

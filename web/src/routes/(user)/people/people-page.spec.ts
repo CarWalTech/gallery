@@ -6,6 +6,7 @@ import { authManager } from '$lib/managers/auth-manager.svelte';
 import { PeopleSortBy, peopleViewSettings } from '$lib/stores/preferences.store';
 import {
   RepresentativeFaceSource,
+  SharedSpaceRole,
   Type,
   type PeopleFaceStatisticsResponseDto,
   type PeopleStatisticsResponseDto,
@@ -551,6 +552,32 @@ describe('Global people page', () => {
       });
     });
     expect(sdkMock.updatePerson).not.toHaveBeenCalled();
+  });
+
+  it('blocks inline renames for space-primary rows when the user is a viewer', async () => {
+    sdkMock.getMembers.mockResolvedValue([
+      {
+        userId: 'current-user-id',
+        role: SharedSpaceRole.Viewer,
+        email: 'me@test.dev',
+        name: 'Me',
+        joinedAt: '2026-01-01T00:00:00.000Z',
+        sharePersonMetadata: true,
+        showInTimeline: true,
+      },
+    ]);
+    renderPage([
+      makePerson({
+        id: 'space-person-2',
+        name: 'Shared Alice',
+        isFavorite: undefined,
+        primaryProfile: { type: Type.SpacePerson, id: 'space-person-2', spaceId: 'viewer-space-grid' },
+      }),
+    ]);
+
+    await waitFor(() => expect(sdkMock.getMembers).toHaveBeenCalledWith({ id: 'viewer-space-grid' }));
+    await waitFor(() => expect(screen.queryByDisplayValue('Shared Alice')).toBeNull());
+    expect(screen.getByText('Shared Alice')).toBeInTheDocument();
   });
 
   it('keeps personal actions off shared-space-only rows', async () => {

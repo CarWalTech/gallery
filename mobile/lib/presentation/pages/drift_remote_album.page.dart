@@ -11,7 +11,6 @@ import 'package:immich_mobile/extensions/translate_extensions.dart';
 import 'package:immich_mobile/presentation/widgets/bottom_sheet/remote_album_bottom_sheet.widget.dart';
 import 'package:immich_mobile/presentation/widgets/remote_album/drift_album_option.widget.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline.widget.dart';
-import 'package:immich_mobile/presentation/widgets/timeline/timeline_grouping_header_sliver.widget.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline_route_scope.dart';
 import 'package:immich_mobile/providers/infrastructure/album.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/current_album.provider.dart';
@@ -29,7 +28,6 @@ class RemoteAlbumPage extends ConsumerStatefulWidget {
   const RemoteAlbumPage({super.key, required this.album});
 
   static const timelineOverviewControlsEnabled = true;
-  static const timelineOverviewTopSliverHeight = kTimelineGroupingHeaderSliverHeight;
 
   @override
   ConsumerState<RemoteAlbumPage> createState() => _RemoteAlbumPageState();
@@ -182,12 +180,11 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
     final isOwner = user != null ? user.id == _album.ownerId : false;
 
     return TimelineRouteScope(
-      timelineServiceBuilder: (ref, scope) =>
-          ref.watch(timelineFactoryProvider).remoteAlbum(albumId: _album.id, temporalScope: scope),
+      timelineServiceBuilder: (ref, scope, groupBy) =>
+          ref.watch(timelineFactoryProvider).remoteAlbum(albumId: _album.id, groupBy: groupBy, temporalScope: scope),
       overrides: [currentRemoteAlbumScopedProvider.overrideWithValue(_album)],
       child: Timeline(
-        topSliverWidget: const TimelineGroupingHeaderSliver(),
-        topSliverWidgetHeight: RemoteAlbumPage.timelineOverviewTopSliverHeight,
+        withGroupingPill: true,
         appBar: RemoteAlbumSliverAppBar(
           icon: Icons.photo_album_outlined,
           kebabMenu: _AlbumKebabMenu(

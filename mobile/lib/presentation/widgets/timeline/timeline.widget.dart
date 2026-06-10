@@ -23,6 +23,7 @@ import 'package:immich_mobile/presentation/widgets/timeline/scroll_drain.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/scrubber.widget.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/segment.model.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline_grouping_anchor.dart';
+import 'package:immich_mobile/presentation/widgets/timeline/timeline_grouping_bottom_pill.widget.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline.state.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline_drag_region.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline_scroll_target.dart';
@@ -31,6 +32,7 @@ import 'package:immich_mobile/providers/infrastructure/readonly_mode.provider.da
 import 'package:immich_mobile/providers/infrastructure/setting.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/timeline.provider.dart';
 import 'package:immich_mobile/providers/timeline/multiselect.provider.dart';
+import 'package:immich_mobile/providers/timeline/timeline_grouping.provider.dart';
 import 'package:immich_mobile/providers/timeline/zoom_anchor.provider.dart';
 import 'package:immich_mobile/widgets/common/immich_loading_indicator.dart';
 import 'package:immich_mobile/widgets/common/immich_sliver_app_bar.dart';
@@ -57,6 +59,7 @@ class Timeline extends StatelessWidget {
     this.readOnly = false,
     this.persistentBottomBar = false,
     this.loadingWidget,
+    this.withGroupingPill = false,
   });
 
   final Widget? topSliverWidget;
@@ -73,27 +76,19 @@ class Timeline extends StatelessWidget {
   final bool persistentBottomBar;
   final Widget? loadingWidget;
 
+  /// Overlay the always-visible Years|Months|All bottom pill and reserve bottom
+  /// clearance for it. Detail timelines (album/space/person/...) opt in; the main
+  /// Photos page keeps its app-bar chip and stays off.
+  final bool withGroupingPill;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       floatingActionButton: const DownloadStatusFloatingButton(),
       body: LayoutBuilder(
-        builder: (_, constraints) => ProviderScope(
-          overrides: [
-            timelineArgsProvider.overrideWith(
-              (ref) => TimelineArgs(
-                maxWidth: constraints.maxWidth,
-                maxHeight: constraints.maxHeight,
-                columnCount: ref.watch(settingsProvider.select((s) => s.get(Setting.tilesPerRow))),
-                showStorageIndicator: showStorageIndicator,
-                withStack: withStack,
-                groupBy: groupBy,
-              ),
-            ),
-            if (readOnly) readonlyModeProvider.overrideWith(() => _AlwaysReadOnlyNotifier()),
-          ],
-          child: _SliverTimeline(
+        builder: (_, constraints) {
+          final sliverTimeline = _SliverTimeline(
             topSliverWidget: topSliverWidget,
             topSliverWidgetHeight: topSliverWidgetHeight,
             bottomSliverWidget: bottomSliverWidget,
@@ -104,8 +99,30 @@ class Timeline extends StatelessWidget {
             snapToMonth: snapToMonth,
             maxWidth: constraints.maxWidth,
             loadingWidget: loadingWidget,
-          ),
-        ),
+            withGroupingPill: withGroupingPill,
+          );
+          return ProviderScope(
+            overrides: [
+              timelineArgsProvider.overrideWith(
+                (ref) => TimelineArgs(
+                  maxWidth: constraints.maxWidth,
+                  maxHeight: constraints.maxHeight,
+                  columnCount: ref.watch(settingsProvider.select((s) => s.get(Setting.tilesPerRow))),
+                  showStorageIndicator: showStorageIndicator,
+                  withStack: withStack,
+                  groupBy: groupBy,
+                ),
+              ),
+              if (readOnly) readonlyModeProvider.overrideWith(() => _AlwaysReadOnlyNotifier()),
+            ],
+            // The pill overlays the whole timeline body — including the loading state — by
+            // design: it is the always-visible grouping control, mirroring how the old top
+            // header was present while content loaded.
+            child: withGroupingPill
+                ? Stack(children: [sliverTimeline, const TimelineGroupingBottomPill()])
+                : sliverTimeline,
+          );
+        },
       ),
     );
   }
@@ -134,6 +151,7 @@ class _SliverTimeline extends ConsumerStatefulWidget {
     this.snapToMonth = true,
     this.maxWidth,
     this.loadingWidget,
+    this.withGroupingPill = false,
   });
 
   final Widget? topSliverWidget;
@@ -146,6 +164,7 @@ class _SliverTimeline extends ConsumerStatefulWidget {
   final bool snapToMonth;
   final double? maxWidth;
   final Widget? loadingWidget;
+  final bool withGroupingPill;
 
   @override
   ConsumerState createState() => _SliverTimelineState();
@@ -192,7 +211,7 @@ class _SliverTimelineState extends ConsumerState<_SliverTimeline> {
       if (mounted) _requestScrollDrain();
     });
 
-    ref.listenManual(settingsProvider.select((settings) => settings.get(Setting.groupAssetsBy)), _onGroupingChanged);
+    ref.listenManual(timelineGroupingProvider, _onGroupingChanged);
   }
 
   @override
@@ -253,7 +272,7 @@ class _SliverTimelineState extends ConsumerState<_SliverTimeline> {
   // When the grouping granularity changes (e.g. via the grouping selector),
   // anchor the rebuilt timeline to the date currently at the top of the viewport
   // so the user keeps their place instead of jumping to the most recent content.
-  void _onGroupingChanged(int? previous, int next) {
+  void _onGroupingChanged(GroupAssetsBy? previous, GroupAssetsBy next) {
     if (previous == null || previous == next) {
       return;
     }
@@ -273,7 +292,7 @@ class _SliverTimelineState extends ConsumerState<_SliverTimeline> {
     final anchorNotifier = ref.read(timelineZoomAnchorProvider.notifier);
     final resolved = resolveGroupingChangeAnchorDate(
       topBucketDate: topBucketDate,
-      previousGroupBy: GroupAssetsBy.values[previous],
+      previousGroupBy: previous,
       remembered: anchorNotifier.lastPositionDate,
     );
     anchorNotifier.setDate(resolved);
@@ -419,9 +438,7 @@ class _SliverTimelineState extends ConsumerState<_SliverTimeline> {
       return;
     }
 
-    final activeGroupBy =
-        ref.read(timelineArgsProvider).groupBy ??
-        GroupAssetsBy.values[ref.read(settingsProvider).get(Setting.groupAssetsBy)];
+    final GroupAssetsBy activeGroupBy = ref.read(timelineArgsProvider).groupBy ?? ref.read(timelineGroupingProvider);
     if (activeGroupBy != groupBy) {
       return;
     }
@@ -549,9 +566,8 @@ class _SliverTimelineState extends ConsumerState<_SliverTimeline> {
             ),
         onData: (segments) {
           _lastRenderedSegments = segments;
-          final activeGroupBy =
-              ref.watch(timelineArgsProvider).groupBy ??
-              GroupAssetsBy.values[ref.watch(settingsProvider).get(Setting.groupAssetsBy)];
+          final GroupAssetsBy activeGroupBy =
+              ref.watch(timelineArgsProvider).groupBy ?? ref.watch(timelineGroupingProvider);
           final zoomAnchor = ref.watch(timelineZoomAnchorProvider);
           _scheduleZoomAnchorResolution(anchor: zoomAnchor, groupBy: activeGroupBy, segments: segments);
           final childCount = (segments.lastOrNull?.lastIndex ?? -1) + 1;
@@ -561,7 +577,11 @@ class _SliverTimelineState extends ConsumerState<_SliverTimeline> {
           final topPadding = context.padding.top + (widget.appBar == null ? 0 : kToolbarHeight) + 10;
 
           const bottomSheetOpenModifier = 120.0;
-          final contentBottomPadding = context.padding.bottom + (isMultiSelectEnabled ? bottomSheetOpenModifier : 0);
+          final pillClearance = widget.withGroupingPill
+              ? TimelineGroupingBottomPill.pillHeight + TimelineGroupingBottomPill.bottomFloat
+              : 0.0;
+          final contentBottomPadding =
+              context.padding.bottom + pillClearance + (isMultiSelectEnabled ? bottomSheetOpenModifier : 0);
           final scrubberBottomPadding = contentBottomPadding + kScrubberThumbHeight;
 
           final grid = CustomScrollView(

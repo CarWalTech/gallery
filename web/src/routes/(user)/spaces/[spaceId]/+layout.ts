@@ -1,4 +1,4 @@
-import { getMembers, getSharedSpaceAlbums, getSpace } from '@immich/sdk';
+import { getMembers, getSharedSpaceAlbums, getSpace, getSpaceFolders } from '@immich/sdk';
 import { redirect } from '@sveltejs/kit';
 import { Route } from '$lib/route';
 import { authenticate } from '$lib/utils/auth';
@@ -7,12 +7,13 @@ import type { LayoutLoad } from './$types';
 export const load = (async ({ url, params }) => {
   await authenticate(url);
   try {
-    const [space, members, linkedAlbums] = await Promise.all([
+    const [space, members, linkedAlbums, folders] = await Promise.all([
       getSpace({ id: params.spaceId }),
       getMembers({ id: params.spaceId }),
       getSharedSpaceAlbums({ id: params.spaceId }),
+      getSpaceFolders({ id: params.spaceId }),
     ]);
-    return { space, members, linkedAlbums, meta: { title: space.name } };
+    return { space, members, linkedAlbums, folders, meta: { title: space.name } };
   } catch (error) {
     // Space deleted or access revoked mid-session → return to the spaces list rather than erroring.
     const status = (error as { status?: number })?.status;

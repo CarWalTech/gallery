@@ -79,6 +79,7 @@ import { SharedSpaceAlbumAuditTable } from 'src/schema/tables/shared-space-album
 import { SharedSpaceAlbumUserAuditTable } from 'src/schema/tables/shared-space-album-user-audit.table';
 import { SharedSpaceAlbumUserTable } from 'src/schema/tables/shared-space-album-user.table';
 import { SharedSpaceAlbumTable } from 'src/schema/tables/shared-space-album.table';
+import { SharedSpaceFolderTable } from 'src/schema/tables/shared-space-folder.table';
 import { SharedSpaceAssetAuditTable } from 'src/schema/tables/shared-space-asset-audit.table';
 import { SharedSpaceAssetTable } from 'src/schema/tables/shared-space-asset.table';
 import { SharedSpaceAuditTable } from 'src/schema/tables/shared-space-audit.table';
@@ -176,6 +177,7 @@ export class ImmichDatabase {
     SharedSpaceAlbumAuditTable,
     SharedSpaceAlbumUserTable,
     SharedSpaceAlbumUserAuditTable,
+    SharedSpaceFolderTable,
     SharedSpaceLibraryTable,
     SharedSpaceLibraryAuditTable,
     SharedSpaceActivityTable,
@@ -319,6 +321,7 @@ export interface DB {
   shared_space_album_audit: SharedSpaceAlbumAuditTable;
   shared_space_album_user: SharedSpaceAlbumUserTable;
   shared_space_album_user_audit: SharedSpaceAlbumUserAuditTable;
+  shared_space_folder: SharedSpaceFolderTable;
   shared_space_library: SharedSpaceLibraryTable;
   shared_space_library_audit: SharedSpaceLibraryAuditTable;
   shared_space_activity: SharedSpaceActivityTable;

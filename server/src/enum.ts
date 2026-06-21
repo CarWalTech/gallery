@@ -262,6 +262,11 @@ export enum Permission {
   SharedSpaceAlbumUpdate = 'sharedSpaceAlbum.update',
   SharedSpaceAlbumDelete = 'sharedSpaceAlbum.delete',
 
+  SharedSpaceFolderCreate = 'sharedSpaceFolder.create',
+  SharedSpaceFolderRead = 'sharedSpaceFolder.read',
+  SharedSpaceFolderUpdate = 'sharedSpaceFolder.update',
+  SharedSpaceFolderDelete = 'sharedSpaceFolder.delete',
+
   UserGroupCreate = 'userGroup.create',
   UserGroupRead = 'userGroup.read',
   UserGroupUpdate = 'userGroup.update',
@@ -440,6 +445,22 @@ export const UserAvatarColorSchema = z
   .enum(UserAvatarColor)
   .describe('User avatar color')
   .meta({ id: 'UserAvatarColor' });
+
+export enum FolderColor {
+  Amber = 'amber',
+  Orange = 'orange',
+  Red = 'red',
+  Pink = 'pink',
+  Purple = 'purple',
+  Blue = 'blue',
+  Green = 'green',
+  Gray = 'gray',
+}
+
+export const FolderColorSchema = z
+  .enum(FolderColor)
+  .describe('Folder color')
+  .meta({ id: 'FolderColor' });
 
 export enum UserStatus {
   Active = 'active',

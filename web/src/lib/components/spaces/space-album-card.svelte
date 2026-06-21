@@ -13,9 +13,10 @@
     canManage: boolean;
     onUnlink?: (album: SharedSpaceLinkedAlbumDto) => void;
     onToggleTimeline?: (album: SharedSpaceLinkedAlbumDto) => void;
+    onMoveToFolder?: (album: SharedSpaceLinkedAlbumDto) => void;
   }
 
-  let { spaceId, album, canManage, onUnlink, onToggleTimeline }: Props = $props();
+  let { spaceId, album, canManage, onUnlink, onToggleTimeline, onMoveToFolder }: Props = $props();
 
   let thumbnailUrl = $derived(
     album.albumThumbnailAssetId ? getAssetMediaUrl({ id: album.albumThumbnailAssetId }) : null,
@@ -46,6 +47,7 @@
           text={album.showInTimeline ? $t('spaces_hide_from_timeline') : $t('spaces_linked_albums_show_in_timeline')}
           onClick={() => onToggleTimeline?.(album)}
         />
+        <MenuOption text={$t('space_folder_move_album')} onClick={() => onMoveToFolder?.(album)} />
         <MenuOption text={$t('spaces_linked_albums_unlink')} onClick={() => onUnlink?.(album)} />
       </ButtonContextMenu>
     </div>

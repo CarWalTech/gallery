@@ -1,5 +1,5 @@
 import { createZodDto } from 'nestjs-zod';
-import { SharedSpaceRole, UserAvatarColor, UserAvatarColorSchema } from 'src/enum';
+import { FolderColor, FolderColorSchema, SharedSpaceRole, UserAvatarColor, UserAvatarColorSchema } from 'src/enum';
 import z from 'zod';
 
 const SharedSpaceRoleSchema = z.enum(SharedSpaceRole).meta({ id: 'SharedSpaceRole' });
@@ -129,7 +129,8 @@ const SharedSpaceLibraryLinkSchema = z
 
 const SharedSpaceAlbumLinkUpdateSchema = z
   .object({
-    showInTimeline: z.boolean().describe('Include this album in the space timeline'),
+    showInTimeline: z.boolean().optional().describe('Include this album in the space timeline'),
+    folderId: z.uuidv4().nullable().optional().describe('Folder ID to place this album in (null = root)'),
   })
   .meta({ id: 'SharedSpaceAlbumLinkUpdateDto' });
 
@@ -141,9 +142,49 @@ const SharedSpaceLinkedAlbumSchema = z
     showInTimeline: z.boolean(),
     assetCount: z.number(),
     albumThumbnailAssetId: z.string().nullable(),
+    folderId: z.string().nullable().optional().describe('Folder this album is placed in (null = root)'),
     createdAt: z.string().meta({ format: 'date-time' }).describe('Link creation timestamp'),
   })
   .meta({ id: 'SharedSpaceLinkedAlbumDto' });
+
+// ── Folder schemas ─────────────────────────────────────────────────────────────
+
+const SharedSpaceFolderCreateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).describe('Folder name'),
+    description: z.string().max(500).optional().describe('Folder description'),
+    color: FolderColorSchema.default(FolderColor.Amber).optional().describe('Folder color'),
+    parentId: z.uuidv4().nullable().optional().describe('Parent folder ID (null or omit for root)'),
+    position: z.int().min(0).optional().describe('Sort position among siblings'),
+  })
+  .meta({ id: 'SharedSpaceFolderCreateDto' });
+
+const SharedSpaceFolderUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional().describe('Folder name'),
+    description: z.string().max(500).nullable().optional().describe('Folder description'),
+    color: FolderColorSchema.nullable().optional().describe('Folder color'),
+    parentId: z.uuidv4().nullable().optional().describe('New parent folder ID (null = promote to root)'),
+    position: z.int().min(0).optional().describe('Sort position among siblings'),
+  })
+  .meta({ id: 'SharedSpaceFolderUpdateDto' });
+
+const SharedSpaceFolderResponseSchema = z
+  .object({
+    id: z.string().describe('Folder ID'),
+    spaceId: z.string().describe('Space ID'),
+    parentId: z.string().nullable().describe('Parent folder ID (null = root)'),
+    name: z.string().describe('Folder name'),
+    description: z.string().nullable().describe('Folder description'),
+    color: z.string().nullable().describe('Folder color'),
+    position: z.number().describe('Sort position among siblings'),
+    albumCount: z.number().optional().describe('Number of albums directly in this folder'),
+    createdAt: z.string().describe('Creation date'),
+    updatedAt: z.string().describe('Last update date'),
+  })
+  .meta({ id: 'SharedSpaceFolderResponseDto' });
+
+// ── Asset constants ─────────────────────────────────────────────────────────────
 
 export const MAX_SPACE_ASSETS_PER_REQUEST = 10_000;
 
@@ -199,3 +240,6 @@ export class SharedSpaceAssetAddDto extends createZodDto(SharedSpaceAssetAddSche
 export class SharedSpaceAssetRemoveDto extends createZodDto(SharedSpaceAssetRemoveSchema) {}
 export class SharedSpaceActivityQueryDto extends createZodDto(SharedSpaceActivityQuerySchema) {}
 export class SharedSpaceActivityResponseDto extends createZodDto(SharedSpaceActivityResponseSchema) {}
+export class SharedSpaceFolderCreateDto extends createZodDto(SharedSpaceFolderCreateSchema) {}
+export class SharedSpaceFolderUpdateDto extends createZodDto(SharedSpaceFolderUpdateSchema) {}
+export class SharedSpaceFolderResponseDto extends createZodDto(SharedSpaceFolderResponseSchema) {}

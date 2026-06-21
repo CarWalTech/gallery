@@ -9,6 +9,7 @@ import type { AssetSearchBuilderOptions } from 'src/repositories/search.reposito
 import { DB } from 'src/schema';
 import { SharedSpaceAlbumTable } from 'src/schema/tables/shared-space-album.table';
 import { SharedSpaceAssetTable } from 'src/schema/tables/shared-space-asset.table';
+import { SharedSpaceFolderTable } from 'src/schema/tables/shared-space-folder.table';
 import { SharedSpaceLibraryTable } from 'src/schema/tables/shared-space-library.table';
 import { SharedSpaceMemberTable } from 'src/schema/tables/shared-space-member.table';
 import { SharedSpacePersonAliasTable } from 'src/schema/tables/shared-space-person-alias.table';
@@ -431,6 +432,7 @@ export class SharedSpaceRepository {
         'shared_space_album.albumId',
         'shared_space_album.addedById',
         'shared_space_album.showInTimeline',
+        'shared_space_album.folderId',
         'shared_space_album.createdAt',
         'album.albumName',
         'album.albumThumbnailAssetId',
@@ -2609,5 +2611,107 @@ export class SharedSpaceRepository {
       .select('combined.spaceId')
       .limit(1)
       .executeTakeFirst();
+  }
+
+  // ==========================================
+  // Shared Space Folder CRUD
+  // ==========================================
+
+  @GenerateSql({ params: [DummyValue.UUID, { name: 'My Folder', parentId: null, description: null, position: 0 }] })
+  createFolder(spaceId: string, values: { name: string; parentId?: string | null; description?: string | null; color?: string | null; position?: number }) {
+    return this.db
+      .insertInto('shared_space_folder')
+      .values({
+        spaceId,
+        parentId: values.parentId ?? null,
+        name: values.name,
+        description: values.description ?? null,
+        color: values.color ?? 'amber',
+        position: values.position ?? 0,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID] })
+  getFolder(spaceId: string, folderId: string) {
+    return this.db
+      .selectFrom('shared_space_folder')
+      .selectAll()
+      .where('id', '=', folderId)
+      .where('spaceId', '=', spaceId)
+      .executeTakeFirst();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getFolders(spaceId: string) {
+    return this.db
+      .selectFrom('shared_space_folder')
+      .selectAll()
+      .where('spaceId', '=', spaceId)
+      .orderBy('position', 'asc')
+      .orderBy('name', 'asc')
+      .execute();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getFolderDescendantIds(folderId: string): Promise<string[]> {
+    return this.db
+      .withRecursive('descendants', (cte) =>
+        cte
+          .selectFrom('shared_space_folder')
+          .select('id')
+          .where('parentId', '=', folderId)
+          .unionAll(
+            cte
+              .selectFrom('shared_space_folder')
+              .innerJoin('descendants', 'descendants.id', 'shared_space_folder.parentId')
+              .select('shared_space_folder.id'),
+          ),
+      )
+      .selectFrom('descendants')
+      .select('id')
+      .execute()
+      .then((rows) => rows.map((r) => r.id));
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID, { name: 'Renamed' }] })
+  updateFolder(spaceId: string, folderId: string, values: Updateable<SharedSpaceFolderTable>) {
+    return this.db
+      .updateTable('shared_space_folder')
+      .set(values)
+      .where('id', '=', folderId)
+      .where('spaceId', '=', spaceId)
+      .returningAll()
+      .executeTakeFirst();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID] })
+  deleteFolder(spaceId: string, folderId: string) {
+    return this.db
+      .deleteFrom('shared_space_folder')
+      .where('id', '=', folderId)
+      .where('spaceId', '=', spaceId)
+      .execute();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID, DummyValue.UUID] })
+  setAlbumFolder(spaceId: string, albumId: string, folderId: string | null) {
+    return this.db
+      .updateTable('shared_space_album')
+      .set({ folderId })
+      .where('spaceId', '=', spaceId)
+      .where('albumId', '=', albumId)
+      .execute();
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  countAlbumsInFolder(folderId: string): Promise<number> {
+    return this.db
+      .selectFrom('shared_space_album')
+      .select((eb) => eb.fn.countAll<number>().as('count'))
+      .where('folderId', '=', folderId)
+      .executeTakeFirst()
+      .then((row) => Number(row?.count ?? 0));
   }
 }

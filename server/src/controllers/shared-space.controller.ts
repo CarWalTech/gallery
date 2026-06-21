@@ -40,6 +40,9 @@ import {
   SharedSpaceAssetAddDto,
   SharedSpaceAssetRemoveDto,
   SharedSpaceCreateDto,
+  SharedSpaceFolderCreateDto,
+  SharedSpaceFolderResponseDto,
+  SharedSpaceFolderUpdateDto,
   SharedSpaceLibraryLinkDto,
   SharedSpaceLinkedAlbumDto,
   SharedSpaceMemberCreateDto,
@@ -636,5 +639,66 @@ export class SharedSpaceController {
   })
   unlinkAlbum(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto, @Param('albumId') albumId: string): Promise<void> {
     return this.service.unlinkAlbum(auth, id, albumId);
+  }
+
+  // ── Folder endpoints ──────────────────────────────────────────────────────────
+
+  @Post(':id/folders')
+  @Authenticated({ permission: Permission.SharedSpaceFolderCreate })
+  @Endpoint({
+    summary: 'Create a folder in a shared space',
+    description: 'Create a folder to organize albums. Folders can be nested arbitrarily deep.',
+    history: new HistoryBuilder().added('v1').beta('v1'),
+  })
+  createFolder(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: SharedSpaceFolderCreateDto,
+  ): Promise<SharedSpaceFolderResponseDto> {
+    return this.service.createFolder(auth, id, dto);
+  }
+
+  @Get(':id/folders')
+  @Authenticated({ permission: Permission.SharedSpaceFolderRead })
+  @Endpoint({
+    summary: 'List folders in a shared space',
+    description: 'Retrieve all folders in a shared space (flat list — use parentId to build the tree client-side).',
+    history: new HistoryBuilder().added('v1').beta('v1'),
+  })
+  getFolders(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<SharedSpaceFolderResponseDto[]> {
+    return this.service.getFolders(auth, id);
+  }
+
+  @Patch(':id/folders/:folderId')
+  @Authenticated({ permission: Permission.SharedSpaceFolderUpdate })
+  @Endpoint({
+    summary: 'Update a folder in a shared space',
+    description: 'Rename, move to a new parent, or re-order a folder. Cycle detection prevents invalid moves.',
+    history: new HistoryBuilder().added('v1').beta('v1'),
+  })
+  updateFolder(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Param('folderId') folderId: string,
+    @Body() dto: SharedSpaceFolderUpdateDto,
+  ): Promise<SharedSpaceFolderResponseDto> {
+    return this.service.updateFolder(auth, id, folderId, dto);
+  }
+
+  @Delete(':id/folders/:folderId')
+  @Authenticated({ permission: Permission.SharedSpaceFolderDelete })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Endpoint({
+    summary: 'Delete a folder from a shared space',
+    description:
+      'Delete a folder and all its descendants. Albums in deleted folders are moved to the root (folderId = null).',
+    history: new HistoryBuilder().added('v1').beta('v1'),
+  })
+  deleteFolder(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Param('folderId') folderId: string,
+  ): Promise<void> {
+    return this.service.deleteFolder(auth, id, folderId);
   }
 }

@@ -26,6 +26,9 @@ import {
   SharedSpaceAssetAddDto,
   SharedSpaceAssetRemoveDto,
   SharedSpaceCreateDto,
+  SharedSpaceFolderCreateDto,
+  SharedSpaceFolderResponseDto,
+  SharedSpaceFolderUpdateDto,
   SharedSpaceLibraryLinkDto,
   SharedSpaceLinkedAlbumDto,
   SharedSpaceLinkedLibraryDto,
@@ -689,7 +692,18 @@ export class SharedSpaceService extends BaseService {
     dto: SharedSpaceAlbumLinkUpdateDto,
   ): Promise<void> {
     await this.requireRole(auth, spaceId, SharedSpaceRole.Editor);
-    await this.sharedSpaceRepository.setAlbumShowInTimeline(spaceId, albumId, dto.showInTimeline);
+    if (dto.showInTimeline !== undefined) {
+      await this.sharedSpaceRepository.setAlbumShowInTimeline(spaceId, albumId, dto.showInTimeline);
+    }
+    if ('folderId' in dto) {
+      if (dto.folderId !== null && dto.folderId !== undefined) {
+        const folder = await this.sharedSpaceRepository.getFolder(spaceId, dto.folderId);
+        if (!folder) {
+          throw new BadRequestException('Folder not found in this space');
+        }
+      }
+      await this.sharedSpaceRepository.setAlbumFolder(spaceId, albumId, dto.folderId ?? null);
+    }
   }
 
   async getLinkedAlbums(auth: AuthDto, spaceId: string): Promise<SharedSpaceLinkedAlbumDto[]> {
@@ -703,6 +717,7 @@ export class SharedSpaceService extends BaseService {
         addedById: link.addedById,
         showInTimeline: link.showInTimeline,
         albumThumbnailAssetId: link.albumThumbnailAssetId,
+        folderId: link.folderId ?? null,
         assetCount: await this.sharedSpaceRepository.getAlbumAssetCount(link.albumId),
         createdAt: (link.createdAt as unknown as Date).toISOString(),
       });
@@ -2824,5 +2839,113 @@ export class SharedSpaceService extends BaseService {
     } catch (error) {
       this.logger.error(`Failed to sync space people after removing assets from album ${albumId}: ${error}`);
     }
+  }
+
+  // ── Folder methods ─────────────────────────────────────────────────────────────
+
+  async createFolder(auth: AuthDto, spaceId: string, dto: SharedSpaceFolderCreateDto): Promise<SharedSpaceFolderResponseDto> {
+    await this.requireRole(auth, spaceId, SharedSpaceRole.Editor);
+
+    if (dto.parentId) {
+      const parent = await this.sharedSpaceRepository.getFolder(spaceId, dto.parentId);
+      if (!parent) {
+        throw new BadRequestException('Parent folder not found in this space');
+      }
+    }
+
+    const folder = await this.sharedSpaceRepository.createFolder(spaceId, {
+      name: dto.name,
+      parentId: dto.parentId ?? null,
+      description: dto.description ?? null,
+      color: dto.color ?? 'amber',
+      position: dto.position ?? 0,
+    });
+
+    return this.mapFolder(folder);
+  }
+
+  async getFolders(auth: AuthDto, spaceId: string): Promise<SharedSpaceFolderResponseDto[]> {
+    await this.requireMembership(auth, spaceId);
+    const folders = await this.sharedSpaceRepository.getFolders(spaceId);
+    return folders.map((f) => this.mapFolder(f));
+  }
+
+  async updateFolder(
+    auth: AuthDto,
+    spaceId: string,
+    folderId: string,
+    dto: SharedSpaceFolderUpdateDto,
+  ): Promise<SharedSpaceFolderResponseDto> {
+    await this.requireRole(auth, spaceId, SharedSpaceRole.Editor);
+
+    const existing = await this.sharedSpaceRepository.getFolder(spaceId, folderId);
+    if (!existing) {
+      throw new NotFoundException('Folder not found');
+    }
+
+    // Cycle detection: cannot set parentId to self or any descendant.
+    if (dto.parentId !== undefined && dto.parentId !== null) {
+      if (dto.parentId === folderId) {
+        throw new BadRequestException('A folder cannot be its own parent');
+      }
+      const descendantIds = await this.sharedSpaceRepository.getFolderDescendantIds(folderId);
+      if (descendantIds.includes(dto.parentId)) {
+        throw new BadRequestException('Cannot move a folder into one of its own descendants');
+      }
+      const newParent = await this.sharedSpaceRepository.getFolder(spaceId, dto.parentId);
+      if (!newParent) {
+        throw new BadRequestException('Parent folder not found in this space');
+      }
+    }
+
+    const updated = await this.sharedSpaceRepository.updateFolder(spaceId, folderId, {
+      ...(dto.name !== undefined && { name: dto.name }),
+      ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.color !== undefined && { color: dto.color }),
+      ...(dto.parentId !== undefined && { parentId: dto.parentId }),
+      ...(dto.position !== undefined && { position: dto.position }),
+    });
+
+    if (!updated) {
+      throw new NotFoundException('Folder not found');
+    }
+
+    return this.mapFolder(updated);
+  }
+
+  async deleteFolder(auth: AuthDto, spaceId: string, folderId: string): Promise<void> {
+    await this.requireRole(auth, spaceId, SharedSpaceRole.Editor);
+
+    const existing = await this.sharedSpaceRepository.getFolder(spaceId, folderId);
+    if (!existing) {
+      throw new NotFoundException('Folder not found');
+    }
+
+    // CASCADE in DB handles child folders. Albums with this folderId get folderId SET NULL.
+    await this.sharedSpaceRepository.deleteFolder(spaceId, folderId);
+  }
+
+  private mapFolder(folder: {
+    id: string;
+    spaceId: string;
+    parentId: string | null;
+    name: string;
+    description: string | null;
+    color?: string | null;
+    position: number;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+  }): SharedSpaceFolderResponseDto {
+    return {
+      id: folder.id,
+      spaceId: folder.spaceId,
+      parentId: folder.parentId,
+      name: folder.name,
+      description: folder.description,
+      color: folder.color ?? 'amber',
+      position: folder.position,
+      createdAt: folder.createdAt instanceof Date ? folder.createdAt.toISOString() : String(folder.createdAt),
+      updatedAt: folder.updatedAt instanceof Date ? folder.updatedAt.toISOString() : String(folder.updatedAt),
+    };
   }
 }

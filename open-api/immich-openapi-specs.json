@@ -14886,6 +14886,262 @@
         "x-immich-state": "Beta"
       }
     },
+    "/shared-spaces/{id}/folders": {
+      "get": {
+        "description": "Retrieve all folders in a shared space (flat list — use parentId to build the tree client-side).",
+        "operationId": "getFolders",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SharedSpaceFolderResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "List folders in a shared space",
+        "tags": [
+          "Shared Spaces"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          }
+        ],
+        "x-immich-permission": "sharedSpaceFolder.read",
+        "x-immich-state": "Beta"
+      },
+      "post": {
+        "description": "Create a folder to organize albums. Folders can be nested arbitrarily deep.",
+        "operationId": "createFolder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedSpaceFolderCreateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedSpaceFolderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Create a folder in a shared space",
+        "tags": [
+          "Shared Spaces"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          }
+        ],
+        "x-immich-permission": "sharedSpaceFolder.create",
+        "x-immich-state": "Beta"
+      }
+    },
+    "/shared-spaces/{id}/folders/{folderId}": {
+      "delete": {
+        "description": "Delete a folder and all its descendants. Albums in deleted folders are moved to the root (folderId = null).",
+        "operationId": "deleteFolder",
+        "parameters": [
+          {
+            "name": "folderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Delete a folder from a shared space",
+        "tags": [
+          "Shared Spaces"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          }
+        ],
+        "x-immich-permission": "sharedSpaceFolder.delete",
+        "x-immich-state": "Beta"
+      },
+      "patch": {
+        "description": "Rename, move to a new parent, or re-order a folder. Cycle detection prevents invalid moves.",
+        "operationId": "updateFolder",
+        "parameters": [
+          {
+            "name": "folderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedSpaceFolderUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedSpaceFolderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update a folder in a shared space",
+        "tags": [
+          "Shared Spaces"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          }
+        ],
+        "x-immich-permission": "sharedSpaceFolder.update",
+        "x-immich-state": "Beta"
+      }
+    },
     "/shared-spaces/{id}/libraries": {
       "put": {
         "description": "Link an external library so its assets appear in the space. Requires admin and space editor/owner.",
@@ -24887,6 +25143,20 @@
         ],
         "type": "object"
       },
+      "FolderColor": {
+        "description": "Folder color",
+        "enum": [
+          "amber",
+          "orange",
+          "red",
+          "pink",
+          "purple",
+          "blue",
+          "green",
+          "gray"
+        ],
+        "type": "string"
+      },
       "FoldersResponse": {
         "properties": {
           "enabled": {
@@ -27022,6 +27292,10 @@
           "sharedSpaceAlbum.create",
           "sharedSpaceAlbum.update",
           "sharedSpaceAlbum.delete",
+          "sharedSpaceFolder.create",
+          "sharedSpaceFolder.read",
+          "sharedSpaceFolder.update",
+          "sharedSpaceFolder.delete",
           "userGroup.create",
           "userGroup.read",
           "userGroup.update",
@@ -29669,14 +29943,18 @@
       },
       "SharedSpaceAlbumLinkUpdateDto": {
         "properties": {
+          "folderId": {
+            "description": "Folder ID to place this album in (null = root)",
+            "format": "uuid",
+            "nullable": true,
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
           "showInTimeline": {
             "description": "Include this album in the space timeline",
             "type": "boolean"
           }
         },
-        "required": [
-          "showInTimeline"
-        ],
         "type": "object"
       },
       "SharedSpaceAssetAddDto": {
@@ -29739,6 +30017,141 @@
         ],
         "type": "object"
       },
+      "SharedSpaceFolderCreateDto": {
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/FolderColor",
+            "default": "amber",
+            "description": "Folder color"
+          },
+          "description": {
+            "description": "Folder description",
+            "maxLength": 500,
+            "type": "string"
+          },
+          "name": {
+            "description": "Folder name",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentId": {
+            "description": "Parent folder ID (null or omit for root)",
+            "format": "uuid",
+            "nullable": true,
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
+          "position": {
+            "description": "Sort position among siblings",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "SharedSpaceFolderResponseDto": {
+        "properties": {
+          "albumCount": {
+            "description": "Number of albums directly in this folder",
+            "type": "number"
+          },
+          "color": {
+            "description": "Folder color",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "Creation date",
+            "type": "string"
+          },
+          "description": {
+            "description": "Folder description",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "Folder ID",
+            "type": "string"
+          },
+          "name": {
+            "description": "Folder name",
+            "type": "string"
+          },
+          "parentId": {
+            "description": "Parent folder ID (null = root)",
+            "nullable": true,
+            "type": "string"
+          },
+          "position": {
+            "description": "Sort position among siblings",
+            "type": "number"
+          },
+          "spaceId": {
+            "description": "Space ID",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Last update date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "color",
+          "createdAt",
+          "description",
+          "id",
+          "name",
+          "parentId",
+          "position",
+          "spaceId",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "SharedSpaceFolderUpdateDto": {
+        "properties": {
+          "color": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FolderColor"
+              }
+            ],
+            "description": "Folder color",
+            "nullable": true
+          },
+          "description": {
+            "description": "Folder description",
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "description": "Folder name",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentId": {
+            "description": "New parent folder ID (null = promote to root)",
+            "format": "uuid",
+            "nullable": true,
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "type": "string"
+          },
+          "position": {
+            "description": "Sort position among siblings",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "SharedSpaceLibraryLinkDto": {
         "properties": {
           "libraryId": {
@@ -29775,6 +30188,11 @@
           "createdAt": {
             "description": "Link creation timestamp",
             "format": "date-time",
+            "type": "string"
+          },
+          "folderId": {
+            "description": "Folder this album is placed in (null = root)",
+            "nullable": true,
             "type": "string"
           },
           "showInTimeline": {

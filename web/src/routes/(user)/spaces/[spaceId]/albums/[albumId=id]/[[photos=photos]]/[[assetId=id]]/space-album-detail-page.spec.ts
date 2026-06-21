@@ -182,6 +182,10 @@ function renderPage({
         members,
         album,
         meta: { title: album.albumName },
+        folders: [],
+        linkedAlbums: [],
+        asset: undefined,
+        error: undefined,
       },
     },
   });
